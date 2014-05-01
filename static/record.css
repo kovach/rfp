@@ -1,7 +1,9 @@
 html, body {
   margin: 0;
   padding: 0;
-  background-color: #93a1a1;
+  /*background-color: #93a1a1;*/
+  background-color: #002b36;
+  background-color: #586e75;
 /* #002b36 */
 }
 canvas {
