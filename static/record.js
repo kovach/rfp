@@ -37,168 +37,182 @@ add = function(obj) {
   return id;
 }
 
-addmsg = function(msg, cause) {
+addmsg = function(cause, msg) {
   add({ cause : cause,  msg : msg });
 }
 
 look = function(id) { 
-  var val = env.heap[id];
-  return val;
+  return env.heap[id];
 }
 l = look;
-alive = function(time) {
-  return function(ref) {
-    return ref <= time;
-  }
-}
 
-lookcv = function(id) {
-  return look(lookc(id)).val;
+lookv = function(ptr) {
+  return look(lookp(ptr)).val;
 }
-lookp = function(id, time) {
-  return look(findLast(look(id).val, alive(time)));
+lookp = function(ptr) {
+  return look(ptr.val).ref;
 }
-lookc = function(id) {
-  var obj = look(id);
-  if (obj.current) {
-    return obj.current;
-  } else {
-    return look(id).ref;
-  }
-}
-lookp = function(id, time) {
-  return findLast2(id, time);
-}
-findLast = function(xs, time) {
-  while (xs > time) {
-    xs = look(xs).prior;
-  }
-  return look(xs).ref;
-}
-
-// returns pointer
-getr = function(id, r) {
-  return look(id).rs[r];
-}
-
-p = function(root) {
-  return { type : '_pointer', root : root };
-}
-mkp = function(root) {
-  var ref = add(p(root));
-  // used by modp
-  p.val = ref;
-  return ref;
-}
-//modp = function(ptr, ref) {
-//  look(ptr).val.push(ref);
+// TODO
+//lookp = function(id, time) {
+//  return findLast(id, time);
 //}
+//findLast = function(xs, time) {
+//  while (xs > time) {
+//    xs = look(xs).prior;
+//  }
+//  return look(xs).ref;
+//}
+
+// Optimization:
+// Returns pointer
+getr = function(id, r) {
+  return look(id).val.fields[r];
+}
+
+// "Pointers"
+mkp = function(root, name) {
+  // r for root
+  var p = { type : '_r', root : root, name : name };
+  var pobj = { val : add(p) };
+  return pobj;
+}
 modp = function(ptr, ref) {
-  var r = root(ptr);
-  var current = lookc(r);
+  var mod =
+    { prior : ptr.val
+    , ref : ref
+    , type : '_e' // e for edit
+    }
 
-  var newr = mkmod(current, ref);
-  look(r).current = newr;
-  return newr;
+  ptr.val = add(mod);
 }
-mkmod = function(m1, ref) {
-  var m2 = { prior : m1
-           , ref : ref
-           , type : '_mod'
-           }
-  return add(m2);
+constrs = function(type, head) {
+  var t = look(type);
+  if (t.constrs) {
+    return t.constrs[head];
+  } else {
+    // Supports external types
+    return [];
+  }
 }
+mkdata = function(cause, val) {
+  var dataref = add({ cause : cause
+                    , val : val
+                    });
+  // Optimization:
+  var pmap = {};
 
-mkd2 = function(prior, cause, val) {
-  var newref = add({ cause : cause
-                   , val : val
-                   });
-  var rsm = {};
-  _.each(val.rs, function(r) {
-    var ref = mkp(newref);
-    rsm[r] = ref;
+  _.each(constrs(val.type, val.head), function(field) {
+    // Make Locations for fields
+    var obj = mkp(dataref, field);
+    pmap[field] = obj;
   });
 
-  look(newref).rs = rsm;
+  // Optimization:
+  look(dataref).val.fields = pmap;
 
-  return modp(prior, newref);
+  return dataref;
+}
+modval = function(ptr, cause, val) {
+  return modp(ptr, mkdata(cause, val));
 }
 
-//mkd = function(prior, cause, type, val, rs) {
-//  var newref = add({ cause : cause
-//    , type : type , val : val
-//  });
-//  var rsm = {};
-//  _.each(rs, function(r) {
-//    var ref = mkp(newref);
-//    rsm[r] = ref;
-//  });
-//
-//  look(newref).rs = rsm;
-//
-//  return modp(prior, newref);
-//}
+// Make list type
+t_list = add(
+  { name : 'list'
+  , constrs :
+    { nil : []
+    , cons : ['head', 'tail']
+    }
+  });
+t_num = add(
+  { name : 'num'
+  });
 
-nil = function(ref, cause) {
-  return mkd2(ref, cause, { type : 'list'
-                          , head : 'nil'
-                          , rs : []
-                          });
+mktdata = function(cause, type, head) {
+  var v = { type : type
+          , head : head
+          }
+  return mkdata(cause, v);
 }
-cons = function(ref, cause) {
-  return mkd2(ref, cause, { type : 'list', head : 'cons', rs : ['head', 'tail'] });
+
+nil = function(cause) {
+  return mktdata(cause, t_list, 'nil');
 }
-num = function(ref, cause, n) {
-  return mkd2(ref, cause, { type : 'num', head : n, rs : []});
+cons = function(cause) {
+  return mktdata(cause, t_list, 'cons');
+}
+num = function(cause, n) {
+  return mktdata(cause, t_num, n);
 }
 
 cause = {};
 cause.root = 'root';
 cause.init = 'init';
+r = cause.root;
+pointers = {};
+pointers.root = 'proot';
 
-zipper = function() {
+//p1 = mkp('none', 'x');
+//c1 = cons(r);
+//modp(p1, c1);
+//h1 = getr(c1, 'head');
+//n1 = nil(r);
+//n2 = num(r, 22)
+//n3 = num(r, 23)
+//u1 = function() {modp(getr(c1, 'tail'), n1);}
+//u2 = function() {modp(getr(c1, 'head'), n2);}
+//u1(); u2();
+//modp(h1, n3);
+
+zipper = function(name) {
 
   var z = this;
-  var zp = add(z);
+  var zr = add(z);
+  var zp = mkp(pointers.root, name);
+  z.cause = 'zipper';
+  z.ptr = zp;
 
-  z.front = mkp(zp);
-  z.back  = mkp(zp);
-  nil(z.front, cause.init);
-  nil(z.back , cause.init);
+  z.front = mkp(zp, 'front');
+  z.back  = mkp(zp, 'back');
+  modp(z.front, nil(z.cause));
+  modp(z.back, nil(z.cause));
+  // nil, nil
 
   z.left = function() {
-    if (lookcv(z.front).head === 'nil') {
-      return
-    }
     // TODO
   }
   z.add = function(ref) {
-    var f = lookc(z.front);
-    var cause = addmsg('add', zp);
-
-    cons(z.front, cause);
-    modp(lookcv(z.front)['head'], ref);
-    modp(lookcv(z.front)['head'], f);
+    var cause = addmsg('add', { val : ref });
+    var c = cons(cause);
+    modp(getr(c, 'head'), ref);
+    modp(getr(c, 'tail'), lookp(z.front));
+    modp(z.front, c);
   }
   z.toList = function() {
     return z.toList$(z.front);
   }
   z.toList$ = function(ref) {
-    var obj = lookcv(ref);
+    var obj = lookv(ref);
     if (obj.head === 'nil') {
-      return
+      console.log('[]');
     } else {
-      var h = lookcv(obj.rs['head']);
+      var h = lookv(obj.fields['head']);
       console.log(h);
-      z.toList$(obj.rs['tail'])
+      z.toList$(obj.fields['tail'])
     }
   }
 }
+z1 = new zipper("a-zipper");
+n1 = num(r, 22);
+n2 = num(r, 23);
+z1.add(n1);
+z1.add(n2);
+z1.toList();
 
-z1 = new zipper();
-p1 = mkp(undefined);
-o1 = num(p1, cause.root, 22);
-modp(p1, o1);
+//z1 = new zipper();
+//p1 = mkp(undefined);
+//o1 = num(p1, cause.root, 22);
+//modp(p1, o1);
 
 
 // old tests
