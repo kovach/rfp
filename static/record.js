@@ -26,78 +26,123 @@ content of one message log entry
    - future log can reference new game id
 
  */
+/*
+ 
 
-i = _.uniqueId
-none = 'none'
-env = { count : 0, heap : [] }
-add = function(obj) {
-  var id = env.count;
-  env.heap[id] = obj;
-  env.count += 1;
+
+
+*/
+
+Ptr = {}
+Ptr.root = 0
+Ptr.edit = 1
+Ptr.base_root = 'root'
+
+Cause = {};
+Cause.root = 'root';
+Cause.init = 'init';
+
+W = {}
+W.env = { count : 0, heap : [] }
+
+// Add with cause
+W.add = function(obj) {
+  var id = W.env.count;
+  var val = { cause : W.current, val : obj };
+  W.env.heap[id] = val;
+  W.env.count += 1;
   return id;
 }
 
-addmsg = function(cause, msg) {
-  add({ cause : cause,  msg : msg });
+W.current = Cause.root
+
+W.send = function(obj, msg) {
+  var current = W.current;
+  W.current = W.add(msg);
+  var out = obj.handle(msg);
+  W.current = current;
+  // TODO eliminate this?
+  return out;
 }
+W.init = function(obj) {
+  var or = W.add(obj);
+  var op = mkp(Ptr.base_root, obj.name);
+  obj.handle = function(msg) {
+    _.each(obj.handlers, function(h) { h(msg); });
+  }
+  obj.handlers = [];
+
+  return { ref : or, ptr : op };
+}
+W.addH = function(obj, hook) {
+  obj.handlers.push(hook);
+}
+W.addL = function(obj, label, hook) {
+  obj.handlers.push(function(msg) {
+    if (msg.label === label) {
+      return hook(msg);
+    }
+  });
+}
+
 
 look = function(id) { 
-  return env.heap[id];
+  return W.env.heap[id];
 }
-l = look;
+lookv = function(id) { 
+  return look(id).val;
+}
 
-lookv = function(ptr) {
-  return look(lookp(ptr)).val;
+lookpv = function(ptr) {
+  return lookv(lookp(ptr));
 }
 lookp = function(ptr) {
-  return look(ptr.val).ref;
+  var pval = lookv(ptr.unptr);
+  if (pval.type === Ptr.root) {
+    console.log('error lookp. root');
+  } else {
+    return pval.ref;
+  }
 }
-// TODO
-//lookp = function(id, time) {
-//  return findLast(id, time);
-//}
-//findLast = function(xs, time) {
-//  while (xs > time) {
-//    xs = look(xs).prior;
-//  }
-//  return look(xs).ref;
-//}
 
 // Optimization:
 // Returns pointer
 getr = function(id, r) {
-  return look(id).val.fields[r];
+  return lookv(id).fields[r];
 }
 
 // "Pointers"
-mkp = function(root, name) {
+mkp = function(base, name) {
   // r for root
-  var p = { type : '_r', root : root, name : name };
-  var pobj = { val : add(p) };
-  return pobj;
+  var ptr =
+    { type : Ptr.root
+    , base : base
+    , name : name
+    };
+
+  return { unptr : W.add(ptr) };
 }
 modp = function(ptr, ref) {
   var mod =
-    { prior : ptr.val
+    { type : Ptr.edit
+    , prior : ptr.val
     , ref : ref
-    , type : '_e' // e for edit
     }
 
-  ptr.val = add(mod);
+  // Optimization
+  ptr.unptr = W.add(mod);
 }
 constrs = function(type, head) {
-  var t = look(type);
+  var t = lookv(type);
   if (t.constrs) {
     return t.constrs[head];
   } else {
-    // Supports external types
+    // e.g. Num
     return [];
   }
 }
-mkdata = function(cause, val) {
-  var dataref = add({ cause : cause
-                    , val : val
-                    });
+mkdata = function(val) {
+  var dataref = W.add(val);
   // Optimization:
   var pmap = {};
 
@@ -108,49 +153,54 @@ mkdata = function(cause, val) {
   });
 
   // Optimization:
-  look(dataref).val.fields = pmap;
+  lookv(dataref).fields = pmap;
 
   return dataref;
 }
-modval = function(ptr, cause, val) {
-  return modp(ptr, mkdata(cause, val));
-}
 
+// Types
 // Make list type
-t_list = add(
+//
+t_list = W.add(
   { name : 'list'
   , constrs :
     { nil : []
     , cons : ['head', 'tail']
     }
   });
-t_num = add(
+t_num = W.add(
   { name : 'num'
   });
+t_char = W.add(
+  { name : 'char'
+  });
+//
+//
+//
 
-mktdata = function(cause, type, head) {
+mktdata = function(type, head) {
   var v = { type : type
           , head : head
           }
-  return mkdata(cause, v);
+  return mkdata(v);
 }
 
-nil = function(cause) {
-  return mktdata(cause, t_list, 'nil');
+nil = function() {
+  return mktdata(t_list, 'nil');
 }
-cons = function(cause) {
-  return mktdata(cause, t_list, 'cons');
+cons_ = function() {
+  return mktdata(t_list, 'cons');
 }
-num = function(cause, n) {
-  return mktdata(cause, t_num, n);
+cons = function(head, tail) {
+  var c = cons_();
+  modp(getr(c, 'head'), head);
+  modp(getr(c, 'tail'), tail);
+  return c;
+}
+num = function(n) {
+  return mktdata(t_num, n);
 }
 
-cause = {};
-cause.root = 'root';
-cause.init = 'init';
-r = cause.root;
-pointers = {};
-pointers.root = 'proot';
 
 //p1 = mkp('none', 'x');
 //c1 = cons(r);
@@ -167,91 +217,71 @@ pointers.root = 'proot';
 zipper = function(name) {
 
   var z = this;
-  var zr = add(z);
-  var zp = mkp(pointers.root, name);
-  z.cause = 'zipper';
-  z.ptr = zp;
+  z.name = name;
+
+  var rs = W.init(z);
+  var zp = rs.ptr;
 
   z.front = mkp(zp, 'front');
   z.back  = mkp(zp, 'back');
-  modp(z.front, nil(z.cause));
-  modp(z.back, nil(z.cause));
-  // nil, nil
+  modp(z.front, nil());
+  modp(z.back, nil());
 
   z.left = function() {
-    // TODO
   }
   z.add = function(ref) {
-    var cause = addmsg('add', { val : ref });
-    var c = cons(cause);
-    modp(getr(c, 'head'), ref);
-    modp(getr(c, 'tail'), lookp(z.front));
-    modp(z.front, c);
+    modp(z.front, cons(ref, lookp(z.front)));
   }
   z.toList = function() {
     return z.toList$(z.front);
   }
-  z.toList$ = function(ref) {
-    var obj = lookv(ref);
+  z.toList$ = function(ptr) {
+    var obj = lookpv(ptr);
     if (obj.head === 'nil') {
       console.log('[]');
     } else {
-      var h = lookv(obj.fields['head']);
+      var h = lookpv(obj.fields['head']);
       console.log(h);
       z.toList$(obj.fields['tail'])
     }
   }
+
+  W.addL(z, 'add', function(msg) {
+    z.add(msg.ref);
+  });
+  W.addL(z, 'print', function() {
+    z.toList();
+  });
 }
-z1 = new zipper("a-zipper");
-n1 = num(r, 22);
-n2 = num(r, 23);
-z1.add(n1);
-z1.add(n2);
-z1.toList();
 
-//z1 = new zipper();
-//p1 = mkp(undefined);
-//o1 = num(p1, cause.root, 22);
-//modp(p1, o1);
+manager = function(name) {
+  var m = this;
+  m.name = name;
+  W.init(m);
 
+  m.objects = [];
 
-// old tests
-//var root = cause.root
-//var l1 = {_head : 'cons', head : { _head : 22}, tail : { _head : 'cons', head : { _head : 1 }, tail : { _head : 'nil' }}};
-//var p1 = mkp();
-//var front = cons(p1, root);
-//var n1 = num(getr(front, 'head'), root, 22);
-//nil(getr(cons(getr(front, 'tail')), 'tail'), root);
-////nil(getr(front, 'tail'));
-//var n2 = num(getr(front, 'head'), root, 2);
+  W.addH(m, function(msg) {
+    switch (msg.label) {
+      case 'zipper':
+        var z = new zipper(msg.name);
+        m.objects.push(z);
+        return z;
+        break;
+    }
+  });
+}
+MSG = function(label) {
+  return { label : label };
+}
 
+M = new manager("M");
+W.send(M, { label : 'zipper', name : 'z1' });
+z1 = M.objects[0];
 
-// value
-//b0 = add(
-//  { type : 'new'
-//  , val  : true
-//  });
-//
-//// initial state
-//s0 = add(b0);
-//
-//// game type
-//flipper = add(
-//  { flip :
-//    function(msg) {
-//      var b = read('state');
-//      set('state', !b);
-//    }
-//  });
-//
-//    
-//g0 = add(
-//  { state : s0
-//  , def   : flipper
-//  });
-//
-//m0 =
-//{ move : 'flip'
-//, game : g0
-//, cause : none
-//}
+n1 = num(22);
+n2 = num(23);
+
+W.send(z1, { label : 'add', ref : n1 });
+W.send(z1, { label : 'add', ref : n2 });
+W.send(z1, { label : 'print' });
