@@ -25,6 +25,10 @@ content of one message log entry
    - initiates game state root
    - future log can reference new game id
 
+TODO:
+ - need to version game descriptions
+ - 
+
  */
 /*
  
@@ -34,8 +38,8 @@ content of one message log entry
 */
 
 Ptr = {}
-Ptr.root = 0
-Ptr.edit = 1
+Ptr.root = 'root'
+Ptr.edit = 'edit'
 Ptr.base_root = 'root'
 
 Cause = {};
@@ -86,12 +90,14 @@ W.addL = function(obj, label, hook) {
 }
 
 
-look = function(id) { 
+W.look = function(id) { 
   return W.env.heap[id];
 }
-lookv = function(id) { 
+look = W.look
+W.lookv = function(id) { 
   return look(id).val;
 }
+lookv = W.lookv
 
 lookpv = function(ptr) {
   return lookv(lookp(ptr));
