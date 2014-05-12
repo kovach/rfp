@@ -41,8 +41,10 @@ Env.prototype = {
 World = function() {
   // The Log
   this.log = new Env();
+
   // This holds data objects
   this.data = {};
+
   // This is a data object
   var root_obj = {head: 'root'};
   this.current_cause = undefined;
@@ -52,8 +54,13 @@ World = function() {
     head: root_obj.head,
     ref: root_ref,
     names: {},
+    l: function(name) {
+      return this.names[name];
+    },
+    r: function(name) {
+      return this.names[name].l();
+    },
   };
-
   // Causes are generally function refs; initial cause is root ref
   this.current_cause = root_ref;
   // Self-justification :/
@@ -68,12 +75,18 @@ World.prototype = {
     return this.log.add(this.current_cause, obj);
   },
 
-  // Object reference: 2 member
+  // Object reference: 3 members
   lookd: function(ref) {
     return this.data[ref];
   },
   lookv: function(ref) {
     return this.data[ref].head;
+  },
+  l: function(name) {
+    return this.root.l(name);
+  },
+  r: function(name) {
+    return this.root.r(name);
   },
 
   // Ptrs: 3 members
@@ -84,8 +97,16 @@ World.prototype = {
       name: name
     };
 
+    var w = this;
+
     var rptr = {
-      unptr: this.add(lptr)
+      unptr: w.add(lptr),
+      l: function() { 
+        return w.lookd(w.log.lookv(rptr.unptr).val);
+      },
+      mod: function(val) {
+        return w.modptr(this, val);
+      },
     };
 
     data.names[name] = rptr;
@@ -97,23 +118,45 @@ World.prototype = {
     return this.newptr(this.root, name);
   },
 
-  modptr: function(ptr, data_ref) {
+  modptr: function(ptr, data) {
     var mod = {
       type: T.ptr_edit,
       prior: ptr.unptr,
-      val: data_ref,
+      val: data.ref,
     };
 
     ptr.unptr = this.add(mod);
+    return ptr;
   },
 
-  // Data: 1 member
+  // Data: 2 members
   mkdata: function(head) {
     var data_ref = this.add({type: T.data, head: head});
 
-    this.data[data_ref] = {head: head, ref: data_ref, names: {}};
+    var data = {
+      head: head,
+      ref: data_ref,
+      names: {},
 
-    return data_ref;
+      l: function(name) {
+        return this.names[name];
+      },
+      r: function(name) {
+        return this.names[name].l();
+      },
+    };
+
+    this.data[data_ref] = data;
+
+    return data;
+  },
+  mktup: function(head, fields) {
+    var w = this;
+    var data = w.mkdata(head);
+    _.each(fields, function(pair) {
+      w.newptr(data, pair[0]).mod(pair[1]);
+    });
+    return data;
   },
 
   // Functions: 3 members
@@ -121,30 +164,51 @@ World.prototype = {
     var fn_str = '(' + jsfn.toString() + ')';
     var fn_ref = this.add({type: T.fn, val: fn_str});
 
-    with(this.root.names) { 
+    with(this) { 
       var fn_obj = eval(fn_str);
     }
-    this.data[fn_ref] = {ref: fn_ref, fn: fn_obj};
-    return fn_ref;
+    var data = {
+      ref: fn_ref,
+      fn: fn_obj
+    };
+    this.data[fn_ref] = data;
+    return data;
   },
 
-  mkcall: function(fn_ref, arg_ref) {
+  calls: function(fn, args) {
     var call = {
       type: T.fn_call,
-      fn: fn_ref,
-      arg: arg_ref
+      fn: fn.ref,
+      args: _.pluck(args, 'ref'),
     };
+    // Log the call
+    call_ref = this.add(call);
+    //var fn_obj = this.lookd(fn_ref);
+    var temp_cause = this.current_cause;
+    this.current_cause = call_ref
 
-    return this.add(call);
+    // Execute the call
+    var result = fn.fn.apply(null, args);
+
+    this.current_cause = temp_cause;
+    return result;
   },
 
-  call: function(fn_ref, arg_ref) {
-    var fn_obj = this.lookd(fn_ref);
-    var temp_cause = this.current_cause;
+  call: function(fn, arg) {
+    var call = {
+      type: T.fn_call,
+      fn: fn.ref,
+      arg: arg.ref
+    };
     // Log the call
-    this.current_cause = this.mkcall(fn_ref, arg_ref);
-    // Execute  the call
-    var result = fn_obj.fn(this.lookv(arg_ref));
+    call_ref = this.add(call);
+    //var fn_obj = this.lookd(fn_ref);
+    var temp_cause = this.current_cause;
+    this.current_cause = call_ref
+
+    // Execute the call
+    var result = fn.fn(arg);
+
     this.current_cause = temp_cause;
     return result;
   },
@@ -176,30 +240,72 @@ World.prototype = {
 //               //
 
 var w = new World();
+var pr = function() {
+  _.each(w.log.heap, function(o, i) { console.log(i, o.cause, o.val); });
+};
 
-var r22 = w.mkdata(22);
-var r1  = w.mkdata(1);
-var n = w.mkdata('null');
+var init = function() {
+  intro_ptr('nil').mod(mkdata('nil'));
 
-//var p_mkdata = w.intro_ptr('mkdata');
-//w.modptr(p_mkdata, w.mkfn(w.mkdata));
+  var zipper_add = function(self, data) {
+    var z = self
+    z.l('front').mod(mktup('cons', [['head', data], ['tail', z.r('front')]]));
+  };
+  // TODO delete
+  //var zipper_add = function(data) {
+  //  var z = data.r('zipper');
+  //  z.l('front').mod(mktup('cons', [['head', data.r('data')], ['tail', z.r('front')]]));
+  //};
+  intro_ptr('zipper-add').mod(mkfn(zipper_add));
+
+  var zipper = function(name_obj) {
+    var n = name_obj.head;
+    intro_ptr(n).mod(mkdata('zipper'));
+    var z = r(n);
+    newptr(z, 'front').mod(r('nil'));
+    newptr(z, 'back').mod(r('nil'));
+    newptr(z, 'add').mod(r('zipper-add'));
+  }
+  intro_ptr('zipper').mod(mkfn(zipper));
+  intro_ptr('22').mod(mkdata('22'));
+
+  call(r('zipper'), mkdata('z1'));
+
+  calls(r('z1').r('add'), [r('z1'), r('22')]);
+  //call(r('z1').r('add'), mktup('arg', [['zipper', r('z1')], ['data', r('22')]]));
+}
+
+var _null = w.mkdata('null');
+var init= w.intro_ptr('init').mod(w.mkfn(init)).l();
+w.call(init, _null);
+
+pr();
+
+//var r22 = w.mkdata(22);
+//var r1  = w.mkdata(1);
+//var n = w.mkdata('null');
 //
-var fn_ref = w.mkfn(function(x) {
-  return w.mkdata(x*22);
-});
-var nil = w.mkfn(function() {
-  return w.mkdata('nil');
-});
-var mkpair = w.mkfn(function() {
-  var pair = mkdata('pair');
-  newptr(pair, 'fst');
-  newptr(pair, 'snd');
+//var root_ptr = w.intro_ptr('tree');
+//w.modptr(root_ptr, w.mkdata('Branch'));
+//var lp = w.newptr(w.r('tree'), 'left');
+//var rp = w.newptr(w.r('tree'), 'right');
+//w.modptr(lp, w.mkdata('leaf'));
+//w.modptr(w.r('tree').l('right'), w.mkdata(22));
+//
+//var tr_fn = w.intro_ptr('mktree');
+//var tr_fn_ref = w.mkfn(function(name) {
+//  var n = name.head;
+//  intro_ptr(n);
+//  modptr(l(n), mkdata('Branch'));
+//  newptr(r(n), 'left');
+//  newptr(r(n), 'right');
+//});
+//w.modptr(w.l('mktree'), tr_fn_ref);
+//result = w.call(w.r('mktree').ref, w.mkdata('my-tree'));
 
-  return pair;
-});
 
-w.call(fn_ref, r22);
-//w.call(mkpair, n);
+//var fn_ref = w.mkfn(function(x) {
+//  return mkdata(x.head*22);
+//});
 
 
-_.each(w.log.heap, function(o, i) { console.log(i, o.cause, o.val); });
