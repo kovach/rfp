@@ -1,8 +1,8 @@
+// TODO
+// change calls to use arguments array, remove call?
 T = {}
-T.ptr  = 'ptr';
 T.ptr_root = 'ptr-root';
 T.ptr_edit = 'ptr-edit';
-T.ptr_del = 'ptr-del';
 T.data = 'data';
 T.fn   = 'fn';
 T.fn_call = 'fn-call';
@@ -30,7 +30,12 @@ Env.prototype = {
   },
 
   serialize: function() {
-    return JSON.stringify(self.heap);
+    return JSON.stringify(this.heap);
+  },
+
+  parse: function(str) {
+    this.heap = JSON.parse(str);
+    this.count = this.heap.length;
   },
 
   sref: function(ref) {
@@ -41,30 +46,25 @@ Env.prototype = {
 World = function() {
   // The Log
   this.log = new Env();
+  this.time = this.log.count;
 
   // This holds data objects
   this.data = {};
+  // This holds pointers for efficient update from log
+  this.ptrs = {};
 
   // This is a data object
-  var root_obj = {head: 'root'};
-  this.current_cause = undefined;
+  //var root_obj = {head: 'root'};
+  this.current_cause = {};
+
   // Cause will be undefined; see below
-  var root_ref = this.add(root_obj);
-  this.root = {
-    head: root_obj.head,
-    ref: root_ref,
-    names: {},
-    l: function(name) {
-      return this.names[name];
-    },
-    r: function(name) {
-      return this.names[name].l();
-    },
-  };
+  var root_obj = this.mk('root');
+  this.root = root_obj;
   // Causes are generally function refs; initial cause is root ref
-  this.current_cause = root_ref;
+  var root_ref = root_obj.ref;
+  this.current_cause = {ref: root_ref, count: 0};
   // Self-justification :/
-  this.log.look(root_ref).cause = root_ref;
+  this.log.look(root_ref).cause = {ref: root_ref, count: 0};
 
 }
 
@@ -72,10 +72,13 @@ World.prototype = {
 
   // Log: 1 member
   add: function(obj) {
-    return this.log.add(this.current_cause, obj);
+    var cause = this.current_cause
+    var ref = this.log.add({ref: cause.ref, count: cause.count}, obj);
+    this.current_cause.count++;
+    this.time = ref;
+    return ref;
   },
 
-  // Object reference: 3 members
   lookd: function(ref) {
     return this.data[ref];
   },
@@ -89,53 +92,64 @@ World.prototype = {
     return this.root.r(name);
   },
 
-  // Ptrs: 3 members
-  newptr: function(data, name) {
-    var lptr = {
-      type: T.ptr_root,
-      base: data.ref,
-      name: name
-    };
-
+  do_newptr: function(ref, entry) {
     var w = this;
 
-    var rptr = {
-      unptr: w.add(lptr),
+    var ptr_obj = {
+      pref: ref,
+      dref: undefined, // No initial value; set by modptr
       l: function() { 
-        return w.lookd(w.log.lookv(rptr.unptr).val);
+        //return w.lookd(w.log.lookv(this.unptr).val);
+        return w.lookd(this.dref);
       },
       mod: function(val) {
         return w.modptr(this, val);
       },
     };
+    this.data[entry.base].names[entry.name] = ptr_obj;
+    this.ptrs[ref] = ptr_obj;
 
-    data.names[name] = rptr;
+    return ptr_obj;
+  },
+  newptr: function(data, name) {
+    var entry = {
+      type: T.ptr_root,
+      base: data.ref,
+      name: name
+    };
+    var ref = this.add(entry);
 
-    return rptr;
+    return this.do_newptr(ref, entry);
   },
 
-  intro_ptr: function(name) {
+  rptr: function(name) {
     return this.newptr(this.root, name);
   },
 
+  do_modptr: function(ref, entry) {
+    var ptr_obj = this.ptrs[entry.prior];
+    ptr_obj.pref = ref;
+    ptr_obj.dref = entry.val;
+    // Update at new pref
+    this.ptrs[ref] = ptr_obj;
+    return ptr_obj;
+  },
+
   modptr: function(ptr, data) {
-    var mod = {
+    var entry = {
       type: T.ptr_edit,
-      prior: ptr.unptr,
+      prior: ptr.pref,
       val: data.ref,
     };
-
-    ptr.unptr = this.add(mod);
-    return ptr;
+    var ref = this.add(entry)
+    return this.do_modptr(ref, entry);
   },
 
   // Data: 2 members
-  mkdata: function(head) {
-    var data_ref = this.add({type: T.data, head: head});
-
+  do_mk: function(ref, entry) {
     var data = {
-      head: head,
-      ref: data_ref,
+      head: entry.head,
+      ref: ref,
       names: {},
 
       l: function(name) {
@@ -146,13 +160,20 @@ World.prototype = {
       },
     };
 
-    this.data[data_ref] = data;
+    this.data[ref] = data;
 
     return data;
   },
+  mk: function(head) {
+    var entry = {type: T.data, head: head};
+    var ref = this.add(entry);
+
+    return this.do_mk(ref, entry);
+
+  },
   mktup: function(head, fields) {
     var w = this;
-    var data = w.mkdata(head);
+    var data = w.mk(head);
     _.each(fields, function(pair) {
       w.newptr(data, pair[0]).mod(pair[1]);
     });
@@ -160,19 +181,26 @@ World.prototype = {
   },
 
   // Functions: 3 members
-  mkfn: function(jsfn) {
-    var fn_str = '(' + jsfn.toString() + ')';
-    var fn_ref = this.add({type: T.fn, val: fn_str});
-
+  do_mkfn: function(ref, entry) {
     with(this) { 
-      var fn_obj = eval(fn_str);
+      var fn_obj = eval(entry.fn);
     }
     var data = {
-      ref: fn_ref,
+      ref: ref,
       fn: fn_obj
     };
-    this.data[fn_ref] = data;
+    this.data[ref] = data;
     return data;
+  },
+  mkfn: function(jsfn) {
+    var fn_str = '(' + jsfn.toString() + ')';
+    var entry = {
+      type: T.fn,
+      fn: fn_str
+    };
+    var ref = this.add(entry);
+
+    return this.do_mkfn(ref, entry);
   },
 
   calls: function(fn, args) {
@@ -185,7 +213,7 @@ World.prototype = {
     call_ref = this.add(call);
     //var fn_obj = this.lookd(fn_ref);
     var temp_cause = this.current_cause;
-    this.current_cause = call_ref
+    this.current_cause = {ref: call_ref, count: 0};
 
     // Execute the call
     var result = fn.fn.apply(null, args);
@@ -194,6 +222,7 @@ World.prototype = {
     return result;
   },
 
+  // TODO remove this?
   call: function(fn, arg) {
     var call = {
       type: T.fn_call,
@@ -204,7 +233,7 @@ World.prototype = {
     call_ref = this.add(call);
     //var fn_obj = this.lookd(fn_ref);
     var temp_cause = this.current_cause;
-    this.current_cause = call_ref
+    this.current_cause = {ref: call_ref, count: 0}
 
     // Execute the call
     var result = fn.fn(arg);
@@ -213,99 +242,39 @@ World.prototype = {
     return result;
   },
 
-  // Resets run using log, ref as a timepoint
-  // TODO delete
-  //reset: function(ref) {
-  //  var testbar = "(function() { return foo.val; })"
-  //  var testbaz = "(function() { return bar() + 1; })"
-  //  with(this.runtime) {
-  //    this.runtime['bar'] = eval(testbar);
-  //    this.runtime['baz'] = eval(testbaz);
-  //  }
-  //  console.log('bar: ', this.runtime.bar());
-  //  console.log('baz: ', this.runtime.baz());
-  //},
+  load: function(world) {
+    var w = this;
+    _.each(world.log.heap, function(pair, ind) {
+      var entry = pair.val;
+      switch (entry.type) {
+        case T.ptr_root:
+          w.do_newptr(ind, entry);
+          break;
+        case T.ptr_edit:
+          w.do_modptr(ind, entry);
+          break;
+        case T.data:
+          w.do_mk(ind, entry);
+          break;
+        case T.fn:
+          w.do_mkfn(ind, entry);
+          break;
+        default:
+          return;
+      }
+      // TODO better abstraction
+      w.log.heap[ind] = pair
+    });
+  },
+
+
+  rollback: function(time) {
+    for (var i = this.time; i >= time; i--) {
+      var entry = this.log.look(i);
+      switch(entry.val.type) {
+      }
+    }
+  },
+
 }
-
-// Bootstrapping //
-//nil_def = function() {
-//  var nil = newrootptr('nil');
-//  var val = add({ head: 'nil' });
-//  modptr(nil, { 
-//cons_def = function() {
-//  var cons = newrootptr('cons');
-//  newptr(cons, 'head');
-//  newptr(cons, 'tail');
-//};
-//               //
-
-var w = new World();
-var pr = function() {
-  _.each(w.log.heap, function(o, i) { console.log(i, o.cause, o.val); });
-};
-
-var init = function() {
-  intro_ptr('nil').mod(mkdata('nil'));
-
-  var zipper_add = function(self, data) {
-    var z = self
-    z.l('front').mod(mktup('cons', [['head', data], ['tail', z.r('front')]]));
-  };
-  // TODO delete
-  //var zipper_add = function(data) {
-  //  var z = data.r('zipper');
-  //  z.l('front').mod(mktup('cons', [['head', data.r('data')], ['tail', z.r('front')]]));
-  //};
-  intro_ptr('zipper-add').mod(mkfn(zipper_add));
-
-  var zipper = function(name_obj) {
-    var n = name_obj.head;
-    intro_ptr(n).mod(mkdata('zipper'));
-    var z = r(n);
-    newptr(z, 'front').mod(r('nil'));
-    newptr(z, 'back').mod(r('nil'));
-    newptr(z, 'add').mod(r('zipper-add'));
-  }
-  intro_ptr('zipper').mod(mkfn(zipper));
-  intro_ptr('22').mod(mkdata('22'));
-
-  call(r('zipper'), mkdata('z1'));
-
-  calls(r('z1').r('add'), [r('z1'), r('22')]);
-  //call(r('z1').r('add'), mktup('arg', [['zipper', r('z1')], ['data', r('22')]]));
-}
-
-var _null = w.mkdata('null');
-var init= w.intro_ptr('init').mod(w.mkfn(init)).l();
-w.call(init, _null);
-
-pr();
-
-//var r22 = w.mkdata(22);
-//var r1  = w.mkdata(1);
-//var n = w.mkdata('null');
-//
-//var root_ptr = w.intro_ptr('tree');
-//w.modptr(root_ptr, w.mkdata('Branch'));
-//var lp = w.newptr(w.r('tree'), 'left');
-//var rp = w.newptr(w.r('tree'), 'right');
-//w.modptr(lp, w.mkdata('leaf'));
-//w.modptr(w.r('tree').l('right'), w.mkdata(22));
-//
-//var tr_fn = w.intro_ptr('mktree');
-//var tr_fn_ref = w.mkfn(function(name) {
-//  var n = name.head;
-//  intro_ptr(n);
-//  modptr(l(n), mkdata('Branch'));
-//  newptr(r(n), 'left');
-//  newptr(r(n), 'right');
-//});
-//w.modptr(w.l('mktree'), tr_fn_ref);
-//result = w.call(w.r('mktree').ref, w.mkdata('my-tree'));
-
-
-//var fn_ref = w.mkfn(function(x) {
-//  return mkdata(x.head*22);
-//});
-
 
