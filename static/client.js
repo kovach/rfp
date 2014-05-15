@@ -1,56 +1,44 @@
+var world = new World();
+var session;
 console.log('CLIENT');
-var w = new World();
-var v = new World();
-
-var pr1 = function() {
-  _.each(w.log.heap, function(o, i) {
-    console.log(i, o.cause.ref, o.cause.count, o.val); });
-};
-var pr2 = function() {
-  _.each(v.log.heap, function(o, i) {
-    console.log(i, o.cause.ref, o.cause.count, o.val); });
-};
-
-var init = function() {
-  rptr('nil').mod(mk('nil'));
-
-  var zipper_add = function(self, data) {
-    var z = self
-    z.l('front').mod(mktup('cons', [['head', data], ['tail', z.r('front')]]));
-  };
-
-  rptr('zipper-add').mod(mkfn(zipper_add));
-
-  var zipper = function(name_obj) {
-    var n = name_obj.head;
-    rptr(n).mod(mk('zipper'));
-    var z = r(n);
-    newptr(z, 'front').mod(r('nil'));
-    newptr(z, 'back').mod(r('nil'));
-    newptr(z, 'add').mod(r('zipper-add'));
-  }
-  rptr('zipper').mod(mkfn(zipper));
-  rptr('22').mod(mk('22'));
-
-  call(r('zipper'), mk('z1'));
-
-  calls(r('z1').r('add'), [r('z1'), r('22')]);
-}
-
-var init= w.rptr('init').mod(w.mkfn(init)).l();
-w.calls(init, []);
-
-pr1();
-
-v.load(w);
 
 req = new XMLHttpRequest();
 req.onreadystatechange = function() {
-  console.log('state: ', req.readyState);
+  //TODO check for error
   if (req.readyState == 4) {
-    console.log(req.responseText);
+    //console.log('data: ', req.responseText);
+    var json = JSON.parse(req.responseText);
+    switch (msg) {
+      case 'start':
+        session = json.session;
+        var data = json.data;
+        _.each(data,
+            function(entry, ind) {
+              //console.log(ind, entry);
+              world.do_op(ind, entry);
+            });
+        world.log.print();
+        break;
+      case 'send':
+        break;
+    }
   }
 };
 
-req.open("POST", '/data?' + 'data=' + w.log.serialize() , true);
-req.send();
+start_session = function() {
+  msg = 'start';
+  req.open("POST", '/start_session', true);
+  req.send();
+}
+
+//TODO
+send_entry = function() {
+  msg = 'send';
+  req.open("POST", '/send?data=' +
+      undefined +
+      '?session=' + session, true);
+  req.send();
+}
+
+
+start_session();

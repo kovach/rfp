@@ -6,6 +6,15 @@ T.ptr_edit = 'ptr-edit';
 T.data = 'data';
 T.fn   = 'fn';
 T.fn_call = 'fn-call';
+/*
+"Type Def":
+each has a type field
+ptr_root { base: ref, name: str }
+ptr_edit { prior: ref, val: ref }
+data { head: str }
+fn { fn: str }
+call { fn: ref, args: [ref] }
+ */
 
 Env = function() {
   this.count = 0;
@@ -21,9 +30,9 @@ Env.prototype = {
     return this.look(ref).val;
   },
 
-  add: function(cause, obj) {
+  add: function(pair) {
     var ref = this.count;
-    var val = { cause : cause, val : obj };
+    var val = { cause : pair.cause, val : pair.val };
     this.heap[ref] = val;
     this.count += 1;
     return ref;
@@ -33,6 +42,14 @@ Env.prototype = {
     return JSON.stringify(this.heap);
   },
 
+  serialize_range: function(begin, end) {
+    var result = [];
+    for (var i = begin; i <= end; i++) {
+      result.push([i, this.heap.log[i]]);
+    }
+    return JSON.stringify(result);
+  },
+
   parse: function(str) {
     this.heap = JSON.parse(str);
     this.count = this.heap.length;
@@ -40,7 +57,12 @@ Env.prototype = {
 
   sref: function(ref) {
     return JSON.stringify([ref, this.look(ref)]);
-  }
+  },
+
+  print: function() {
+    _.each(this.heap, function(o, i) {
+      console.log(i, o.cause.ref, o.cause.count, o.val); });
+  },
 }
 
 World = function() {
@@ -73,7 +95,9 @@ World.prototype = {
   // Log: 1 member
   add: function(obj) {
     var cause = this.current_cause
-    var ref = this.log.add({ref: cause.ref, count: cause.count}, obj);
+    var ref = this.log.add({
+      cause: {ref: cause.ref, count: cause.count},
+      val: obj});
     this.current_cause.count++;
     this.time = ref;
     return ref;
@@ -98,7 +122,7 @@ World.prototype = {
     var ptr_obj = {
       pref: ref,
       dref: undefined, // No initial value; set by modptr
-      l: function() { 
+      r: function() { 
         //return w.lookd(w.log.lookv(this.unptr).val);
         return w.lookd(this.dref);
       },
@@ -156,7 +180,7 @@ World.prototype = {
         return this.names[name];
       },
       r: function(name) {
-        return this.names[name].l();
+        return this.names[name].r();
       },
     };
 
@@ -227,7 +251,7 @@ World.prototype = {
     var call = {
       type: T.fn_call,
       fn: fn.ref,
-      arg: arg.ref
+      args: [arg.ref]
     };
     // Log the call
     call_ref = this.add(call);
@@ -242,31 +266,39 @@ World.prototype = {
     return result;
   },
 
-  load: function(world) {
+  do_op: function(ind, pair) {
     var w = this;
-    _.each(world.log.heap, function(pair, ind) {
-      var entry = pair.val;
-      switch (entry.type) {
-        case T.ptr_root:
-          w.do_newptr(ind, entry);
-          break;
-        case T.ptr_edit:
-          w.do_modptr(ind, entry);
-          break;
-        case T.data:
-          w.do_mk(ind, entry);
-          break;
-        case T.fn:
-          w.do_mkfn(ind, entry);
-          break;
-        default:
-          return;
-      }
-      // TODO better abstraction
-      w.log.heap[ind] = pair
-    });
-  },
+    var entry = pair.val;
 
+    switch (entry.type) {
+      case T.ptr_root:
+        w.do_newptr(ind, entry);
+        break;
+      case T.ptr_edit:
+        w.do_modptr(ind, entry);
+        break;
+      case T.data:
+        w.do_mk(ind, entry);
+        break;
+      case T.fn:
+        w.do_mkfn(ind, entry);
+        break;
+      default:
+        return;
+    }
+    w.log.heap[ind] = pair;
+  },
+  load: function(world) {
+    return this.loadrange(world, 0, this.log.count);
+  },
+  loadrange: function(world, start, end) {
+    var w = this;
+    for (var ind = start; ind <= end; ind++) {
+      var pair = world.log.heap[ind];
+      var entry = pair.val;
+      w.do_op(ind, entry);
+    }
+  },
 
   rollback: function(time) {
     for (var i = this.time; i >= time; i--) {
