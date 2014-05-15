@@ -1,11 +1,11 @@
 // TODO
-// change calls to use arguments array, remove call?
 T = {}
 T.ptr_root = 'ptr-root';
 T.ptr_edit = 'ptr-edit';
 T.data = 'data';
 T.fn   = 'fn';
 T.fn_call = 'fn-call';
+T.fn_app = 'fn-app';
 /*
 "Type Def":
 each has a type field
@@ -198,8 +198,8 @@ World.prototype = {
   mktup: function(head, fields) {
     var w = this;
     var data = w.mk(head);
-    _.each(fields, function(pair) {
-      w.newptr(data, pair[0]).mod(pair[1]);
+    _.each(fields, function(val, key) {
+      w.newptr(data, key).mod(val);
     });
     return data;
   },
@@ -211,7 +211,8 @@ World.prototype = {
     }
     var data = {
       ref: ref,
-      fn: fn_obj
+      fn: fn_obj,
+      args: [],
     };
     this.data[ref] = data;
     return data;
@@ -227,40 +228,38 @@ World.prototype = {
     return this.do_mkfn(ref, entry);
   },
 
-  calls: function(fn, args) {
-    var call = {
+  app: function(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    var entry = {
+      type: T.fn_app,
+      fn: fn.ref,
+      args: _.pluck(args, 'ref'),
+    };
+    app_ref = this.add(entry);
+
+    var closure = {
+      ref: app_ref,
+      fn: fn.fn,
+      args: fn.args.concat(args),
+    };
+
+    return closure;
+  },
+  call: function(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    var entry = {
       type: T.fn_call,
       fn: fn.ref,
       args: _.pluck(args, 'ref'),
     };
     // Log the call
-    call_ref = this.add(call);
+    call_ref = this.add(entry);
     //var fn_obj = this.lookd(fn_ref);
     var temp_cause = this.current_cause;
     this.current_cause = {ref: call_ref, count: 0};
 
     // Execute the call
-    var result = fn.fn.apply(null, args);
-
-    this.current_cause = temp_cause;
-    return result;
-  },
-
-  // TODO remove this?
-  call: function(fn, arg) {
-    var call = {
-      type: T.fn_call,
-      fn: fn.ref,
-      args: [arg.ref]
-    };
-    // Log the call
-    call_ref = this.add(call);
-    //var fn_obj = this.lookd(fn_ref);
-    var temp_cause = this.current_cause;
-    this.current_cause = {ref: call_ref, count: 0}
-
-    // Execute the call
-    var result = fn.fn(arg);
+    var result = fn.fn.apply(null, fn.args.concat(args));
 
     this.current_cause = temp_cause;
     return result;
@@ -284,7 +283,7 @@ World.prototype = {
         w.do_mkfn(ind, entry);
         break;
       default:
-        return;
+        break;
     }
     w.log.heap[ind] = pair;
   },
@@ -295,8 +294,7 @@ World.prototype = {
     var w = this;
     for (var ind = start; ind <= end; ind++) {
       var pair = world.log.heap[ind];
-      var entry = pair.val;
-      w.do_op(ind, entry);
+      w.do_op(ind, pair);
     }
   },
 

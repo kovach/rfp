@@ -1,10 +1,10 @@
-var world = new World();
+var w = new World();
 var session;
 console.log('CLIENT');
 
 req = new XMLHttpRequest();
 req.onreadystatechange = function() {
-  //TODO check for error
+  //TODO check for server error
   if (req.readyState == 4) {
     //console.log('data: ', req.responseText);
     var json = JSON.parse(req.responseText);
@@ -15,9 +15,14 @@ req.onreadystatechange = function() {
         _.each(data,
             function(entry, ind) {
               //console.log(ind, entry);
-              world.do_op(ind, entry);
+              w.do_op(ind, entry);
             });
-        world.log.print();
+        //TODO fix this
+        w.root = w.data[0];
+
+        w.log.print();
+
+        do_stuff();
         break;
       case 'send':
         break;
@@ -38,6 +43,9 @@ send_entry = function() {
       undefined +
       '?session=' + session, true);
   req.send();
+}
+
+do_stuff = function() {
 }
 
 
