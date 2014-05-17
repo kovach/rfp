@@ -1,31 +1,34 @@
 var init = function() {
-  // 22
-  rptr('22').mod(mk('22'));
+  var base_init = function() {
+    // 22
+    rptr('22').mod(mk('22'));
 
-  // nil
-  rptr('nil').mod(mk('nil'));
-
-  // zipper_add
-  var zipper_add = function(self, data) {
-    var z = self
-    //z.l('front').mod(mktup('cons', [['head', data], ['tail', z.r('front')]]));
-    z.l('front').mod(mktup('cons', {head: data, tail: z.r('front')}));
-  };
-  rptr('zipper-add').mod(mkfn(zipper_add));
-
-  // Zipper
-  var zipper = function(name_obj) {
-    var n = name_obj.head;
-    rptr(n).mod(mk('zipper'));
-    var z = r(n);
-    newptr(z, 'front').mod(r('nil'));
-    newptr(z, 'back').mod(r('nil'));
-    newptr(z, 'add').mod(r('zipper-add'));
+    // nil
+    rptr('nil').mod(mk('nil'));
   }
-  rptr('zipper').mod(mkfn(zipper));
-  // End Zipper
 
-  var object_stuff = function() {
+  var zipper_demo = function() {
+    // zipper_add
+    var zipper_add = function(self, data) {
+      var z = self
+        //z.l('front').mod(mktup('cons', [['head', data], ['tail', z.r('front')]]));
+        z.l('front').mod(mktup('cons', {head: data, tail: z.r('front')}));
+    };
+    rptr('zipper-add').mod(mkfn(zipper_add));
+
+    // Zipper
+    var zipper = function(name_obj) {
+      var n = name_obj.head;
+      rptr(n).mod(mk('zipper'));
+      var z = r(n);
+      newptr(z, 'front').mod(r('nil'));
+      newptr(z, 'back').mod(r('nil'));
+      newptr(z, 'add').mod(r('zipper-add'));
+    }
+    rptr('zipper').mod(mkfn(zipper));
+  }
+
+  var object_init = function() {
     var each_fn = function(list, fn) {
       if (list.head === 'cons') {
         call(fn, list.r('head'));
@@ -39,7 +42,10 @@ var init = function() {
 
     // Core object functions
     var send_msg = function(msg, self) {
-      call(self.r(msg.head), self, msg);
+      var h = self.r(msg.head);
+      if (h) {
+        call(h, self, msg);
+      }
       call(r('each'), self.r('maps'), app(r('send'), msg));
     }
     rptr('send').mod(mkfn(send_msg));
@@ -48,7 +54,9 @@ var init = function() {
     }
     rptr('add-map').mod(mkfn(add_map));
     // End object functions
+  }
 
+  var flip_demo_def = function() {
     // Flip machine (boolean)
     rptr('on').mod(mk('on'));
     rptr('off').mod(mk('off'));
@@ -72,41 +80,45 @@ var init = function() {
     }
     rptr('flip').mod(mkfn(flip));
     // End Flip
+
+    rptr('mouse').mod(mk('mouse'));
   }
-  object_stuff();
+  var flip_demo_mk = function() {
+    // Make some stuff
+    call(r('flip'), mk('f1'));
+    call(r('flip'), mk('f2'));
+    var send_flip = app(r('send'), r('msg-flip'));
+    // Offset f2
+    call(send_flip, r('f2'));
 
-  // Make some stuff
-  call(r('flip'), mk('f1'));
-  call(r('flip'), mk('f2'));
-  var send_flip = app(r('send'), r('msg-flip'));
-  // offset f2
-  call(send_flip, r('f2'));
+    console.log('f1: ', r('f1').r('state'));
+    console.log('f2: ', r('f2').r('state'));
 
-  console.log('f1: ', r('f1').r('state'));
-  console.log('f2: ', r('f2').r('state'));
+    // Adds f2 as a dependent to f1
+    call(r('add-map'), r('f2'), r('f1'));
+    // Watch propagation
+    call(send_flip, r('f1'));
+    console.log('f1: ', r('f1').r('state'));
+    console.log('f2: ', r('f2').r('state'));
+    call(send_flip, r('f1'));
+    console.log('f1: ', r('f1').r('state'));
+    console.log('f2: ', r('f2').r('state'));
+  }
 
-  // adds f2 as a dependent to f1
-  call(r('add-map'), r('f2'), r('f1'));
-  call(send_flip, r('f1'));
+  // Do Init
+  base_init();
+  object_init();
 
-  console.log('f1: ', r('f1').r('state'));
-  console.log('f2: ', r('f2').r('state'));
-  //call(send_flip, [r('f1')]);
-  console.log('f1: ', r('f1').r('state'));
-  console.log('f2: ', r('f2').r('state'));
+  mk('FOO');
+  mkroot();
+  mk('FOO');
+  log.print();
 
-  //call(r('f1').r('flip'), [r('f1'), r('msg-flip')]);
-  //call(r('f1').r('flip'), [r('f1'), r('msg-flip')]);
-  //call(send_flip, [r('f1')]);
-  //call(send_flip, [r('f1')]);
-  //call(r('send'), [r('msg-flip'), r('f1')]);
-  //call(r('send'), [r('msg-flip'), r('f1')]);
-
-  //call(r('zipper'), [mk('z1')]);
-  //call(r('z1').r('add'), [r('z1'), r('22')]);
+  //flip_demo_def();
+  //flip_demo_mk();
 }
 
 init_world = function(w) {
   var init_ptr = w.rptr('init').mod(w.mkfn(init)).r();
-  w.call(init_ptr, []);
+  w.call(init_ptr);
 };

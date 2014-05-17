@@ -17,7 +17,7 @@ call { fn: ref, args: [ref] }
  */
 
 Env = function() {
-  this.count = 0;
+  this.time = 0;
   this.heap = [];
 }
 Env.prototype = {
@@ -31,11 +31,15 @@ Env.prototype = {
   },
 
   add: function(pair) {
-    var ref = this.count;
+    var ref = this.time;
     var val = { cause : pair.cause, val : pair.val };
     this.heap[ref] = val;
-    this.count += 1;
+    this.time += 1;
     return ref;
+  },
+
+  copy_cause: function(cause) {
+    return {ref: cause.ref, count: cause.count};
   },
 
   serialize: function() {
@@ -52,7 +56,7 @@ Env.prototype = {
 
   parse: function(str) {
     this.heap = JSON.parse(str);
-    this.count = this.heap.length;
+    this.time = this.heap.length;
   },
 
   sref: function(ref) {
@@ -63,43 +67,67 @@ Env.prototype = {
     _.each(this.heap, function(o, i) {
       console.log(i, o.cause.ref, o.cause.count, o.val); });
   },
+
+  print_from: function(time) {
+    for (var i = time; i < this.time; i++) {
+      var o = this.heap[i];
+      console.log(i, o.cause.ref, o.cause.count, o.val);
+    }
+  },
 }
 
-World = function() {
+World = function(other_root, other_log) {
+  var w = this;
+
   // The Log
-  this.log = new Env();
-  this.time = this.log.count;
+  w.log = new Env();
+  w.current_cause = {};
 
   // This holds data objects
   this.data = {};
   // This holds pointers for efficient update from log
   this.ptrs = {};
 
-  // This is a data object
-  //var root_obj = {head: 'root'};
-  this.current_cause = {};
+  // Load other log
+  if (other_root && other_log) {
+    console.log('LOADING:', other_root, other_log);
+    w.load(other_root, other_log);
+    w.log.print();
+  } else { 
+    this.mkroot();
+  }
 
+
+  // TODO delete
   // Cause will be undefined; see below
-  var root_obj = this.mk('root');
-  this.root = root_obj;
-  // Causes are generally function refs; initial cause is root ref
-  var root_ref = root_obj.ref;
-  this.current_cause = {ref: root_ref, count: 0};
-  // Self-justification :/
-  this.log.look(root_ref).cause = {ref: root_ref, count: 0};
+  //var root_obj = this.mk('root');
+  //this.root = root_obj;
+  //// Causes are generally function refs; initial cause is root ref
+  //var root_ref = root_obj.ref;
+  //this.current_cause = {ref: root_ref, count: 0};
+  //// Self-justification :/
+  //this.log.look(root_ref).cause = {ref: root_ref, count: 0};
 
 }
 
 World.prototype = {
 
+  load: function(root, other_log) {
+    var w = this;
+    w.root = root;
+    _.each(other_log.heap, function(entry, ind) {
+      w.log.add(entry);
+      w.do_op(ind, entry);
+    });
+  },
+
   // Log: 1 member
   add: function(obj) {
     var cause = this.current_cause
     var ref = this.log.add({
-      cause: {ref: cause.ref, count: cause.count},
+      cause: this.log.copy_cause(cause),
       val: obj});
     this.current_cause.count++;
-    this.time = ref;
     return ref;
   },
 
@@ -115,6 +143,24 @@ World.prototype = {
   r: function(name) {
     return this.root.r(name);
   },
+
+  //TODO if anything external is ever automatically run by 'add' modifying log after the 
+  //add is a bad idea
+  mkroot: function() {
+    var new_root = this.mk('root');
+    this.root = new_root;
+    // Get raw log entry for potential modification :/
+    var entry = this.log.look(new_root.ref);
+    console.log('root entry: ', entry);
+    if (entry.cause.ref === undefined) {
+      // Do self-justification
+      entry.cause = {ref: new_root.ref, count: 0};
+      this.current_cause = {ref: new_root.ref, count: 1};
+    } else {
+      this.current_cause = {ref: new_root.ref, count: 0};
+    }
+  },
+
 
   do_newptr: function(ref, entry) {
     var w = this;
@@ -180,7 +226,12 @@ World.prototype = {
         return this.names[name];
       },
       r: function(name) {
-        return this.names[name].r();
+        if (this.names[name]) {
+          return this.names[name].r();
+        }  else {
+          console.log(this.ref+":'" + this.head + "'" + " does not have field " + "'" + name + "'");
+          return undefined;
+        }
       },
     };
 
@@ -207,7 +258,7 @@ World.prototype = {
   // Functions: 3 members
   do_mkfn: function(ref, entry) {
     with(this) { 
-      var fn_obj = eval(entry.fn);
+      var fn_obj = eval('(' + entry.fn + ')');
     }
     var data = {
       ref: ref,
@@ -218,7 +269,7 @@ World.prototype = {
     return data;
   },
   mkfn: function(jsfn) {
-    var fn_str = '(' + jsfn.toString() + ')';
+    var fn_str = jsfn.toString();
     var entry = {
       type: T.fn,
       fn: fn_str
@@ -286,25 +337,28 @@ World.prototype = {
         break;
     }
     w.log.heap[ind] = pair;
-  },
-  load: function(world) {
-    return this.loadrange(world, 0, this.log.count);
-  },
-  loadrange: function(world, start, end) {
-    var w = this;
-    for (var ind = start; ind <= end; ind++) {
-      var pair = world.log.heap[ind];
-      w.do_op(ind, pair);
+    if (ind + 1 > w.log.time) {
+      w.log.count = ind + 1;
     }
   },
+  //load: function(world) {
+  //  return this.loadrange(world, 0, this.log.count);
+  //},
+  //loadrange: function(world, start, end) {
+  //  var w = this;
+  //  for (var ind = start; ind <= end; ind++) {
+  //    var pair = world.log.heap[ind];
+  //    w.do_op(ind, pair);
+  //  }
+  //},
 
-  rollback: function(time) {
-    for (var i = this.time; i >= time; i--) {
-      var entry = this.log.look(i);
-      switch(entry.val.type) {
-      }
-    }
-  },
+  //rollback: function(time) {
+  //  for (var i = this.time; i >= time; i--) {
+  //    var entry = this.log.look(i);
+  //    switch(entry.val.type) {
+  //    }
+  //  }
+  //},
 
 }
 

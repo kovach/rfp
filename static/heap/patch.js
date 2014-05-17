@@ -54,9 +54,12 @@ Server = function() {
   var p = this;
   p.sessions = {};
   p.session_count = 0;
-  p.world = new World();
+  // TEST remove
+  var w0 =  new World();
+  p.world = new World(w0.root, w0.log);
 
   init_world(p.world);
+  p.world.log.print();
 
   p.start_session = function() {
     var s = p.session_count;

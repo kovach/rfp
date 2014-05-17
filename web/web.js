@@ -33,5 +33,8 @@ var app = express()
     res.send('here is some data...');
   })
   ;
-
-http.createServer(app).listen(3000); 
+var debug = false;
+if (!debug) {
+  http.createServer(app).listen(3000); 
+} else {
+}
