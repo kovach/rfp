@@ -14,6 +14,7 @@ ptr_edit { prior: ref, val: ref }
 data { head: str }
 fn { fn: str }
 call { fn: ref, args: [ref] }
+app  { fn: ref, args: [ref] }
  */
 
 Env = function() {
@@ -78,24 +79,36 @@ Env.prototype = {
     var entry = this.look(ref);
     var cause = entry.cause;
     var val = entry.val;
-    var str = ref+': ';
+    var r = function(ref) {
+      return {ref: ref};
+    }
+
+    var result = [r(ref), ':'];
     switch (val.type) {
       case T.ptr_root:
-        str += 'ptr: '+val.name+' '+val.base;
+        result = result.concat(['ptr', "'"+val.name+"'", r(val.base)]);
         break;
       case T.ptr_edit:
-        str += val.prior + ' -> ' + val.val;
+        result = result.concat(['edit', r(val.prior) , ' -> ' , r(val.val)]);
         break;
       case T.data:
-        str += 'data:' + val.head;
+        result = result.concat(['data' , val.head]);
         break;
       case T.fn:
-        str += 'fn(...)';
+        result = result.concat(['fn']);
+        break;
+      case T.fn_call:
+        result = result.concat(['call', r(val.fn)])
+          .concat(_.map(val.args, r));
+        break;
+      case T.fn_app:
+        result = result.concat(['app', r(val.fn)])
+          .concat(_.map(val.args, r));
         break;
       default:
         break;
     }
-    return str;
+    return result;
   }
 }
 

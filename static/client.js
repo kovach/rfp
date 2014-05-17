@@ -5,7 +5,7 @@ console.log('CLIENT');
 
 print_update = function() {
   w.log.print_from(current_time);
-  current_time = w.log.count;
+  current_time = w.log.time;
 }
 
 // Begins initialization
@@ -61,12 +61,6 @@ send_entry = function() {
   req.send();
 }
 
-addHandler = function(ev, fn) {
-  window
-    .addEventListener(ev, fn)
-    ;
-}
-
 
 init_ui = function() {
   clickHandler = function(ev) {
@@ -92,6 +86,15 @@ init_ui = function() {
     // Print change
     print_update();
   }
+  var init_constants = function() {
+      rptr('li').mod(mk('li'));
+      rptr('div').mod(mk('div'));
+      rptr('log-entry').mod(mk('log-entry'));
+      rptr('log-token').mod(mk('log-token'));
+      rptr('id').mod(mk('id'));
+  }
+  w.call(w.rptr('constants-init').mod(w.mkfn(init_constants)).r());
+
   var mouse_init = function() {
     // World setup
     var ui_init_fn = function() {
@@ -105,41 +108,70 @@ init_ui = function() {
       newptr(m, 'click').mod(mkfn(function(self, msg) {
         console.log(msg.r('button'));
       }));
-    }
-    w.call(w.rptr('mouse-init').mod(w.mkfn(ui_init_fn)).r());
 
-    var mk_text_elem = function(base, name, text) {
-      var te = newptr(base, name.head).mod(mk('text-elem')).r();
-      newptr(te, 'maps').mod(r('nil'));
-      newptr(te, 'string').mod(mk(text.head));
-      //TODO needed?
-      //newptr(te, 'set').mod(mkfn(function(self, msg) {
-      //  modptr(self.l('string'), msg.r('string'));
-      //}));
+      rptr('focus');
+    }
+    w.call(w.rptr('ui-init').mod(w.mkfn(ui_init_fn)).r());
+
+    var mk_dom_elem = function() {
+
+    }
+    w.rptr('mk-dom-elem').mod(w.mkfn(mk_dom_elem));
+
+    var mk_text_elem = function(type, cl, id, str, ref) {
+      var entry = createElement(type.head, cl.head, id.head);
+      createText(entry, str.head);
+
+      // Mouse handlers
+      addH(entry, 'mouseover', function() {
+        console.log('hi ', str.head);
+        if (ref) {
+          console.log('UPDATING FOCUS');
+          w.modptr(w.l('focus'), ref.head);
+        } else {
+          console.log('no ref');
+        }
+      });
+
+      return entry;
     }
     w.rptr('mk-text-elem').mod(w.mkfn(mk_text_elem));
 
     var mk_log = function(id) {
-      var div = document.createElement('div'); 
-      div.setAttribute('class', 'log');
-      div.setAttribute('id', 'div'+id.head);
-      var ul = document.createElement('ul');
-      ul.setAttribute('id', 'ul'+id.head);
+      var div = createElement('div', 'log', 'div'+id.head);
+      var ul = createElement('ul', '', 'ul'+id.head);
       div.appendChild(ul);
-      document.getElementById('main').appendChild(div);
+      getElement('main').appendChild(div);
     }
     w.rptr('mk-log').mod(w.mkfn(mk_log));
 
     var mk_log_elem = function(index_obj, log_pane) {
       var index = index_obj.head;
       var entry = lookr(index);
-      var str = log.pp_entry(index);
-      var div = document.getElementById('div'+log_pane.head);
-      var ul  = document.getElementById('ul'+log_pane.head);
+      var strings = log.pp_entry(index);
+      console.log(JSON.stringify(strings));
+      console.log(strings);
+      
+      var ul  = getElement('ul'+log_pane.head);
+      var log_entry = createElement('li', 'log-entry', '');
+      ul.appendChild(log_entry);
 
-      var entry = document.createElement('li');
-      entry.appendChild(document.createTextNode(str));
-      ul.appendChild(entry);
+      _.each(strings, function(thing) {
+        if (thing.ref) {
+          var ref_obj = mk(thing.ref);
+          var li = call(r('mk-text-elem'),
+            r('div'), r('log-token'), r('id'),
+            ref_obj, mk(ref_obj));
+        } else {
+          var str = thing;
+          var li = call(r('mk-text-elem'),
+            r('div'), r('log-token'), r('id'),
+            mk(str))
+        }
+        log_entry.appendChild(li);
+      });
+
+      var div = getElement('div'+log_pane.head);
       div.scrollByLines(22);
 
     }
@@ -147,21 +179,21 @@ init_ui = function() {
 
     var log1 = w.mk(0);
     w.call(w.r('mk-log'), log1);
-    for (var i = 0; i < 22; i++) {
+    for (var i = 0; i < 11; i++) {
       w.call(w.r('mk-log-elem'), w.mk(i), log1);
     }
-    var log2 = w.mk(1);
-    w.call(w.r('mk-log'), log2);
-    for (var i = 23; i < 44; i++) {
-      w.call(w.r('mk-log-elem'), w.mk(i), log2);
-    }
+    //var log2 = w.mk(1);
+    //w.call(w.r('mk-log'), log2);
+    //for (var i = 23; i < 44; i++) {
+    //  w.call(w.r('mk-log-elem'), w.mk(i), log2);
+    //}
     //w.call(w.r('mk-log-elem'), w.mk(0));
 
     // Handlers
     addHandler("click", clickHandler);
     addHandler('contextmenu', function(ev) {
       clickHandler(ev);
-      ev.preventDefault();
+      //ev.preventDefault();
     });
 
 
@@ -170,7 +202,8 @@ init_ui = function() {
 
   mouse_init();
   console.log('input ready');
-  w.log.print();
+  print_update();
+  //w.log.print();
 }
 
 

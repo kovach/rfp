@@ -28,6 +28,13 @@ li {
   overflow: auto;
   box-sizing: border-box;
 }
+.log-entry {
+  display: table-row;
+}
+.log-token {
+  display: inline;
+  padding: 4;
+}
 .stuff {
   overflow: auto;
   display: table;

@@ -34,6 +34,6 @@ var app = express()
   ;
 var debug = false;
 if (!debug) {
-  http.createServer(app).listen(3000); 
+  http.createServer(app).listen(80); 
 } else {
 }
