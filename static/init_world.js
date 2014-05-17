@@ -109,11 +109,6 @@ var init = function() {
   base_init();
   object_init();
 
-  mk('FOO');
-  mkroot();
-  mk('FOO');
-  log.print();
-
   //flip_demo_def();
   //flip_demo_mk();
 }

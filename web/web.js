@@ -11,7 +11,6 @@ eval(fs.readFileSync('static/heap/heap.js')+'');
 eval(fs.readFileSync('static/init_world.js')+'');
 eval(fs.readFileSync('static/heap/patch.js')+'');
 
-
 var world = new Server();
 
 var app = express()

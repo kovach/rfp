@@ -74,6 +74,29 @@ Env.prototype = {
       console.log(i, o.cause.ref, o.cause.count, o.val);
     }
   },
+  pp_entry: function(ref) {
+    var entry = this.look(ref);
+    var cause = entry.cause;
+    var val = entry.val;
+    var str = ref+': ';
+    switch (val.type) {
+      case T.ptr_root:
+        str += 'ptr: '+val.name+' '+val.base;
+        break;
+      case T.ptr_edit:
+        str += val.prior + ' -> ' + val.val;
+        break;
+      case T.data:
+        str += 'data:' + val.head;
+        break;
+      case T.fn:
+        str += 'fn(...)';
+        break;
+      default:
+        break;
+    }
+    return str;
+  }
 }
 
 World = function(other_root, other_log) {
@@ -115,6 +138,7 @@ World.prototype = {
   load: function(root, other_log) {
     var w = this;
     w.root = root;
+    w.current_cause = {ref: root.ref, count: 1};
     _.each(other_log.heap, function(entry, ind) {
       w.log.add(entry);
       w.do_op(ind, entry);
@@ -137,6 +161,9 @@ World.prototype = {
   lookv: function(ref) {
     return this.data[ref].head;
   },
+  lookr: function(ref) {
+    return this.log.look(ref);
+  },
   l: function(name) {
     return this.root.l(name);
   },
@@ -144,14 +171,13 @@ World.prototype = {
     return this.root.r(name);
   },
 
-  //TODO if anything external is ever automatically run by 'add' modifying log after the 
-  //add is a bad idea
+  // TODO if anything external is ever automatically run by 'add' modifying log
+  // after the add is a bad idea
   mkroot: function() {
     var new_root = this.mk('root');
     this.root = new_root;
     // Get raw log entry for potential modification :/
     var entry = this.log.look(new_root.ref);
-    console.log('root entry: ', entry);
     if (entry.cause.ref === undefined) {
       // Do self-justification
       entry.cause = {ref: new_root.ref, count: 0};
@@ -217,6 +243,7 @@ World.prototype = {
 
   // Data: 2 members
   do_mk: function(ref, entry) {
+    var w = this;
     var data = {
       head: entry.head,
       ref: ref,
@@ -233,6 +260,9 @@ World.prototype = {
           return undefined;
         }
       },
+//      newptr: function(name) {
+//        return w.newptr(this, name);
+//      }
     };
 
     this.data[ref] = data;

@@ -20,17 +20,22 @@ req.onreadystatechange = function() {
         session = json.session;
         var data = json.data;
         //console.log('req. data: ', data);
-        //_.each(data,
-        //    function(entry, ind) {
-        //      //console.log(ind, entry);
-        //      w.do_op(ind, entry);
-        //    });
-        //w.root = w.data[0];
+        w = new World();
+        _.each(data,
+            function(entry, ind) {
+              w.log.add(entry);
+              w.do_op(ind, entry);
+            });
+        w.root = w.data[0];
 
         //TODO fix this
-        w = new World(data[0], data);
+        //var w0 = new World();
+        //w0.do_op(0, data[0]);
+        //var root = w0.data[0];
+        //console.log('root? ', root);
+        //w = new World(root, data);
 
-        print_update();
+        //print_update();
 
         init_ui();
 
@@ -89,7 +94,7 @@ init_ui = function() {
   }
   var mouse_init = function() {
     // World setup
-    var mouse_init_fn = function() {
+    var ui_init_fn = function() {
       rptr('mouse-left').mod(mk('mouse-left'));
       rptr('mouse-middle').mod(mk('mouse-middle'));
       rptr('mouse-right').mod(mk('mouse-right'));
@@ -101,7 +106,56 @@ init_ui = function() {
         console.log(msg.r('button'));
       }));
     }
-    w.call(w.rptr('mouse-init').mod(w.mkfn(mouse_init_fn)).r());
+    w.call(w.rptr('mouse-init').mod(w.mkfn(ui_init_fn)).r());
+
+    var mk_text_elem = function(base, name, text) {
+      var te = newptr(base, name.head).mod(mk('text-elem')).r();
+      newptr(te, 'maps').mod(r('nil'));
+      newptr(te, 'string').mod(mk(text.head));
+      //TODO needed?
+      //newptr(te, 'set').mod(mkfn(function(self, msg) {
+      //  modptr(self.l('string'), msg.r('string'));
+      //}));
+    }
+    w.rptr('mk-text-elem').mod(w.mkfn(mk_text_elem));
+
+    var mk_log = function(id) {
+      var div = document.createElement('div'); 
+      div.setAttribute('class', 'log');
+      div.setAttribute('id', 'div'+id.head);
+      var ul = document.createElement('ul');
+      ul.setAttribute('id', 'ul'+id.head);
+      div.appendChild(ul);
+      document.getElementById('main').appendChild(div);
+    }
+    w.rptr('mk-log').mod(w.mkfn(mk_log));
+
+    var mk_log_elem = function(index_obj, log_pane) {
+      var index = index_obj.head;
+      var entry = lookr(index);
+      var str = log.pp_entry(index);
+      var div = document.getElementById('div'+log_pane.head);
+      var ul  = document.getElementById('ul'+log_pane.head);
+
+      var entry = document.createElement('li');
+      entry.appendChild(document.createTextNode(str));
+      ul.appendChild(entry);
+      div.scrollByLines(22);
+
+    }
+    w.rptr('mk-log-elem').mod(w.mkfn(mk_log_elem));
+
+    var log1 = w.mk(0);
+    w.call(w.r('mk-log'), log1);
+    for (var i = 0; i < 22; i++) {
+      w.call(w.r('mk-log-elem'), w.mk(i), log1);
+    }
+    var log2 = w.mk(1);
+    w.call(w.r('mk-log'), log2);
+    for (var i = 23; i < 44; i++) {
+      w.call(w.r('mk-log-elem'), w.mk(i), log2);
+    }
+    //w.call(w.r('mk-log-elem'), w.mk(0));
 
     // Handlers
     addHandler("click", clickHandler);
@@ -111,11 +165,12 @@ init_ui = function() {
     });
 
 
-    print_update();
+    //print_update();
   }
 
   mouse_init();
   console.log('input ready');
+  w.log.print();
 }
 
 
