@@ -53,7 +53,13 @@ var init = function() {
       self.l('maps').mod(mktup('cons', {head: map, tail: self.r('maps')}));
     }
     rptr('add-map').mod(mkfn(add_map));
-    // End object functions
+
+    var init_obj = function(self) {
+      newptr(self, 'maps').mod(r('nil'));
+      return self;
+    }
+    rptr('init-obj').mod(mkfn(init_obj));
+
   }
 
   var flip_demo_def = function() {

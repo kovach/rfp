@@ -4,6 +4,14 @@ addHandler = function(ev, fn) {
 addH = function(obj, ev, fn) {
   return obj.addEventListener(ev, fn);
 }
+addMouse = function(obj, fn) {
+  addH(obj, 'click', fn);
+  addH(obj, 'contextmenu',  function(ev) {
+    fn(ev);
+    ev.preventDefault();
+  });
+}
+
 
 createElement = function(type, cl, id) {
   var entry = document.createElement(type);

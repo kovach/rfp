@@ -62,29 +62,26 @@ send_entry = function() {
 }
 
 
+to_button = function(ev) {
+  switch(ev.button) {
+    case 0:
+      return w.r('mouse-left');
+    case 1:
+      return w.r('mouse-middle');
+    case 2:
+      return w.r('mouse-right');
+    default:
+      // Sensible?
+      return w.r('mouse-left');
+  }
+}
+
 init_ui = function() {
   clickHandler = function(ev) {
-    console.log(ev);
-    var button;
-    switch(ev.button) {
-      case 0:
-        button = w.r('mouse-left');
-        break;
-      case 1:
-        button = w.r('mouse-middle');
-        break;
-      case 2:
-        button = w.r('mouse-right');
-        break;
-      default:
-        // Sensible?
-        button = w.r('mouse-left');
-        break;
-    }
-    w.call(w.r('send'), w.mktup('click', {button: button}), w.r('mouse'));
+    var button = to_button(ev);
+    //w.call(w.r('send'), w.mktup('click', {button: button}), w.r('mouse'));
 
     // Print change
-    print_update();
   }
   var init_constants = function() {
       rptr('li').mod(mk('li'));
@@ -110,6 +107,7 @@ init_ui = function() {
       }));
 
       rptr('focus');
+      rptr('log0').mod(mk('log0'));
     }
     w.call(w.rptr('ui-init').mod(w.mkfn(ui_init_fn)).r());
 
@@ -118,19 +116,49 @@ init_ui = function() {
     }
     w.rptr('mk-dom-elem').mod(w.mkfn(mk_dom_elem));
 
-    var mk_text_elem = function(type, cl, id, str, ref) {
-      var entry = createElement(type.head, cl.head, id.head);
+    var text_elem_click = function(self, msg) {
+        console.log('click');
+        var ref;
+        switch (msg.r('button').head) {
+          case 'mouse-left':
+            ref = self.ref;
+            break;
+          case 'mouse-right':
+            ref = undefined;
+            break;
+        }
+        var causes = w.get_causes(ref);
+        _.each(causes, function(ref) {
+          w.call(w.r('mk-log-elem'), w.mk(ref), r('log0'));
+        });
+        print_update();
+    }
+    w.rptr('text-elem-click').mod(w.mkfn(text_elem_click));
+    
+    var mk_text_elem = function(type, cl, str, ref) {
+      var dom_obj = call(r('init-obj'), mk('dom'));
+
+      // click handler
+      newptr(dom_obj, 'click').mod(r('text-elem-click'));
+
+      var entry = createElement(type.head, cl.head, dom_obj.ref);
       createText(entry, str.head);
 
-      // Mouse handlers
+      // mouse handlers
+      addMouse(entry, function(ev) {
+        var button = to_button(ev);
+        w.call(w.r('send'),
+          w.mktup('click', {button: button}),
+          dom_obj);
+      });
       addH(entry, 'mouseover', function() {
-        console.log('hi ', str.head);
-        if (ref) {
-          console.log('UPDATING FOCUS');
-          w.modptr(w.l('focus'), ref.head);
-        } else {
-          console.log('no ref');
-        }
+        //console.log('hi ', str.head);
+        //if (ref) {
+        //  console.log('UPDATING FOCUS');
+        //  w.modptr(w.l('focus'), ref.head);
+        //} else {
+        //  console.log('no ref');
+        //}
       });
 
       return entry;
@@ -138,8 +166,11 @@ init_ui = function() {
     w.rptr('mk-text-elem').mod(w.mkfn(mk_text_elem));
 
     var mk_log = function(id) {
-      var div = createElement('div', 'log', 'div'+id.head);
-      var ul = createElement('ul', '', 'ul'+id.head);
+      var name = id.head;
+      var dom_id = 'ul'+name;
+      var div_id = 'div'+name;
+      var div = createElement('div', 'log', div_id);
+      var ul = createElement('ul', '', dom_id );
       div.appendChild(ul);
       getElement('main').appendChild(div);
     }
@@ -149,23 +180,21 @@ init_ui = function() {
       var index = index_obj.head;
       var entry = lookr(index);
       var strings = log.pp_entry(index);
-      console.log(JSON.stringify(strings));
-      console.log(strings);
       
       var ul  = getElement('ul'+log_pane.head);
       var log_entry = createElement('li', 'log-entry', '');
       ul.appendChild(log_entry);
 
       _.each(strings, function(thing) {
-        if (thing.ref) {
+        if (thing.ref !== undefined) {
           var ref_obj = mk(thing.ref);
           var li = call(r('mk-text-elem'),
-            r('div'), r('log-token'), r('id'),
+            r('div'), r('log-token'),
             ref_obj, mk(ref_obj));
         } else {
           var str = thing;
           var li = call(r('mk-text-elem'),
-            r('div'), r('log-token'), r('id'),
+            r('div'), r('log-token'),
             mk(str))
         }
         log_entry.appendChild(li);
@@ -177,10 +206,10 @@ init_ui = function() {
     }
     w.rptr('mk-log-elem').mod(w.mkfn(mk_log_elem));
 
-    var log1 = w.mk(0);
-    w.call(w.r('mk-log'), log1);
-    for (var i = 0; i < 11; i++) {
-      w.call(w.r('mk-log-elem'), w.mk(i), log1);
+    w.rptr('log0').mod(w.mk('log0'));
+    w.call(w.r('mk-log'), w.r('log0'));
+    for(var i = 0; i < 1; i++) {
+      w.call(w.r('mk-log-elem'), w.mk(i), w.r('log0'));
     }
     //var log2 = w.mk(1);
     //w.call(w.r('mk-log'), log2);
@@ -190,11 +219,11 @@ init_ui = function() {
     //w.call(w.r('mk-log-elem'), w.mk(0));
 
     // Handlers
-    addHandler("click", clickHandler);
-    addHandler('contextmenu', function(ev) {
-      clickHandler(ev);
-      //ev.preventDefault();
-    });
+    //addHandler("click", clickHandler);
+    //addHandler('contextmenu', function(ev) {
+    //  clickHandler(ev);
+    //  //ev.preventDefault();
+    //});
 
 
     //print_update();

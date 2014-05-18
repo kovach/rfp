@@ -82,17 +82,20 @@ Env.prototype = {
     var r = function(ref) {
       return {ref: ref};
     }
+    var wrap = function(str) {
+      return "'" + str + "'";
+    }
 
     var result = [r(ref), ':'];
     switch (val.type) {
       case T.ptr_root:
-        result = result.concat(['ptr', "'"+val.name+"'", r(val.base)]);
+        result = result.concat(['ptr', wrap(val.name), r(val.base)]);
         break;
       case T.ptr_edit:
         result = result.concat(['edit', r(val.prior) , ' -> ' , r(val.val)]);
         break;
       case T.data:
-        result = result.concat(['data' , val.head]);
+        result = result.concat(['data' , wrap(val.head)]);
         break;
       case T.fn:
         result = result.concat(['fn']);
@@ -383,6 +386,29 @@ World.prototype = {
     if (ind + 1 > w.log.time) {
       w.log.count = ind + 1;
     }
+  },
+
+  // Return descendents of this entry
+  get_effects: function(ref) {
+    var w = this;
+    var desc = [ref];
+    for (var i = ref+1; i < w.log.time; i++) {
+      var entry = w.log.look(i);
+      if (_.contains(desc, entry.cause.ref )) {
+        desc.push(i);
+      }
+    }
+
+    return desc;
+  },
+  get_causes: function(ref) {
+    var w = this;
+    var causes = [ref];
+    while (ref !== 0) {
+      var ref = w.log.look(ref).cause.ref;
+      causes.push(ref);
+    }
+    return causes;
   },
   //load: function(world) {
   //  return this.loadrange(world, 0, this.log.count);
