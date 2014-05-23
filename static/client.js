@@ -298,7 +298,17 @@ init_ui = function() {
     }
 
     w.rptr('value-log').mod(w.mk('value-log'));
-    w.call(w.r('mk-log'), w.r('value-log'));
+    //w.call(w.r('mk-log'), w.r('value-log'));
+
+    w.rptr('x').mod(w.mk(22));
+    var test_fn = function() {
+      console.log('TEST FN ', r('x'));
+    }
+    w.rptr('test-fn').mod(w.mkfn(test_fn));
+
+    w.call(w.r('test-fn'));
+    w.l('x').mod(w.mk(400));
+    w.call(w.r('test-fn'));
 
 
 
@@ -307,7 +317,7 @@ init_ui = function() {
 
   mouse_init();
   console.log('input ready');
-  //print_update();
+  print_update();
 }
 
 

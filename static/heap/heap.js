@@ -99,6 +99,10 @@ World = function(other_root, other_log) {
   }
 
 
+  // For Replays
+  w.replay_time = undefined;
+
+
   // TODO delete
   // Cause will be undefined; see below
   //var root_obj = this.mk('root');
@@ -149,6 +153,25 @@ World.prototype = {
     return this.root.r(name);
   },
 
+  tlook: function(t0, ref) {
+    var w = this;
+    var ptr = ref;
+    while (ptr > t0) {
+      ptr = w.lookr(ptr).val.prior;
+    }
+    return w.lookd(w.lookr(ptr).val.val);
+  },
+  pchain: function(ref) {
+    var w = this;
+    var ptr = w.lookr(ref).val;
+    var result = [];
+    while (ptr.prior !== undefined) {
+      result.push(ptr.val);
+      ptr = w.lookr(ptr.prior).val;
+    }
+    return result;
+  },
+
   // TODO if anything external is ever automatically run by 'add' modifying log
   // after the add is a bad idea
   mkroot: function() {
@@ -173,8 +196,12 @@ World.prototype = {
       pref: ref,
       dref: undefined, // No initial value; set by modptr
       r: function() { 
-        //return w.lookd(w.log.lookv(this.unptr).val);
-        return w.lookd(this.dref);
+        if (w.replay_time !== undefined) {
+          console.log('replay ref: ', this);
+          return w.tlook(w.replay_time, this.pref);
+        } else {
+          return w.lookd(this.dref);
+        }
       },
       mod: function(val) {
         return w.modptr(this, val);
@@ -394,6 +421,23 @@ World.prototype = {
 
       }
     }
+  },
+  // Replays call at t0, creates refinement log
+  refine: function(t0) {
+    var w = this;
+    var call = w.lookr(t0).val;
+    if (call.type !== T.fn_call) {
+      console.log('error, must replay function call');
+      return;
+    }
+
+    var fn = w.lookd(call.fn);
+    var args = _.map(call.args, function(arg) {return w.lookd(arg)});
+
+    w.replay_time = t0;
+    w.call.apply(w, [fn].concat(args));
+    w.replay_time = undefined;
+
   },
 
 }
