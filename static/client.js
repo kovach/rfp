@@ -1,3 +1,4 @@
+var app_root = "/d";
 var w;
 var session;
 var current_time = 0;
@@ -12,7 +13,7 @@ print_update = function() {
 req = new XMLHttpRequest();
 req.onreadystatechange = function() {
   //TODO check for server error
-  if (req.readyState == 4) {
+  if (req.readyState == 4 && req.status == 200) {
     //console.log('data: ', req.responseText);
     var json = JSON.parse(req.responseText);
     switch (msg) {
@@ -48,14 +49,14 @@ req.onreadystatechange = function() {
 
 start_session = function() {
   msg = 'start';
-  req.open("POST", '/start_session', true);
+  req.open("POST", app_root + '/start_session', true);
   req.send();
 }
 
 //TODO
 send_entry = function() {
   msg = 'send';
-  req.open("POST", '/send?data=' +
+  req.open("POST", app_root + '/send?data=' +
       undefined +
       '?session=' + session, true);
   req.send();

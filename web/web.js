@@ -2,6 +2,7 @@
 var http = require("http");
 //var connect = require("connect");
 var express = require('express');
+require('express-namespace');
 
 var fs = require('fs');
 
@@ -13,7 +14,9 @@ eval(fs.readFileSync('static/heap/patch.js')+'');
 
 var world = new Server();
 
-var app = express()
+var app = express();
+app.namespace('', function() {
+  app
   .use(express.static('static'))
   .post('/start_session', function(req, res) {
     console.log('/start_session');
@@ -32,8 +35,9 @@ var app = express()
     res.send('here is some data...');
   })
   ;
+});
 var debug = false;
 if (!debug) {
-  http.createServer(app).listen(80); 
+  http.createServer(app).listen(4000); 
 } else {
 }
