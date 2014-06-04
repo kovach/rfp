@@ -75,44 +75,6 @@ Env.prototype = {
       console.log(i, o.cause.ref, o.cause.count, o.val);
     }
   },
-  pp_entry: function(ref) {
-    var entry = this.look(ref);
-    var cause = entry.cause;
-    var val = entry.val;
-    var r = function(ref) {
-      return {ref: ref};
-    }
-    var wrap = function(str) {
-      return "'" + str + "'";
-    }
-
-    var result = [r(ref), ':'];
-    switch (val.type) {
-      case T.ptr_root:
-        result = result.concat(['ptr', wrap(val.name), r(val.base)]);
-        break;
-      case T.ptr_edit:
-        result = result.concat(['edit', r(val.prior) , ' -> ' , r(val.val)]);
-        break;
-      case T.data:
-        result = result.concat(['data' , wrap(val.head)]);
-        break;
-      case T.fn:
-        result = result.concat(['fn']);
-        break;
-      case T.fn_call:
-        result = result.concat(['call', r(val.fn)])
-          .concat(_.map(val.args, r));
-        break;
-      case T.fn_app:
-        result = result.concat(['app', r(val.fn)])
-          .concat(_.map(val.args, r));
-        break;
-      default:
-        break;
-    }
-    return result;
-  }
 }
 
 World = function(other_root, other_log) {
@@ -135,6 +97,10 @@ World = function(other_root, other_log) {
   } else { 
     this.mkroot();
   }
+
+
+  // For Replays
+  w.replay_time = undefined;
 
 
   // TODO delete
@@ -187,6 +153,25 @@ World.prototype = {
     return this.root.r(name);
   },
 
+  tlook: function(t0, ref) {
+    var w = this;
+    var ptr = ref;
+    while (ptr > t0) {
+      ptr = w.lookr(ptr).val.prior;
+    }
+    return w.lookd(w.lookr(ptr).val.val);
+  },
+  pchain: function(ref) {
+    var w = this;
+    var ptr = w.lookr(ref).val;
+    var result = [];
+    while (ptr.prior !== undefined) {
+      result.push(ptr.val);
+      ptr = w.lookr(ptr.prior).val;
+    }
+    return result;
+  },
+
   // TODO if anything external is ever automatically run by 'add' modifying log
   // after the add is a bad idea
   mkroot: function() {
@@ -211,8 +196,12 @@ World.prototype = {
       pref: ref,
       dref: undefined, // No initial value; set by modptr
       r: function() { 
-        //return w.lookd(w.log.lookv(this.unptr).val);
-        return w.lookd(this.dref);
+        if (w.replay_time !== undefined) {
+          console.log('replay ref: ', this);
+          return w.tlook(w.replay_time, this.pref);
+        } else {
+          return w.lookd(this.dref);
+        }
       },
       mod: function(val) {
         return w.modptr(this, val);
@@ -410,24 +399,46 @@ World.prototype = {
     }
     return causes;
   },
-  //load: function(world) {
-  //  return this.loadrange(world, 0, this.log.count);
-  //},
-  //loadrange: function(world, start, end) {
-  //  var w = this;
-  //  for (var ind = start; ind <= end; ind++) {
-  //    var pair = world.log.heap[ind];
-  //    w.do_op(ind, pair);
-  //  }
-  //},
 
-  //rollback: function(time) {
-  //  for (var i = this.time; i >= time; i--) {
-  //    var entry = this.log.look(i);
-  //    switch(entry.val.type) {
-  //    }
-  //  }
-  //},
+  rollback: function(t0) {
+    var w = this;
+    var now = w.log.time;
+
+    var liveset = [];
+    for (var i = now - 1; i > t0; i--) {
+      var entry = w.log.heap[i];
+      switch (entry.val.type) {
+        case T.ptr_root:
+          break;
+        case T.ptr_edit:
+          break;
+        case T.data:
+          break;
+        case T.fn:
+          break;
+        default:
+          break;
+
+      }
+    }
+  },
+  // Replays call at t0, creates refinement log
+  refine: function(t0) {
+    var w = this;
+    var call = w.lookr(t0).val;
+    if (call.type !== T.fn_call) {
+      console.log('error, must replay function call');
+      return;
+    }
+
+    var fn = w.lookd(call.fn);
+    var args = _.map(call.args, function(arg) {return w.lookd(arg)});
+
+    w.replay_time = t0;
+    w.call.apply(w, [fn].concat(args));
+    w.replay_time = undefined;
+
+  },
 
 }
 
