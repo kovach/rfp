@@ -1,4 +1,3 @@
-=======
 // TODO
 // add symbol method
 // do causes/effects on log
@@ -204,8 +203,8 @@ init_ui = function() {
       // mouse handlers
       addMouse(entry, function(ev) {
         var button = to_button(ev);
-        w.call(w.r('send'),
-          w.mktup('click', {button: button}),
+        call(r('send'),
+          mktup('click', {button: button}),
           dom_obj);
       });
       addH(entry, 'mouseenter', function() {
