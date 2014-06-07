@@ -286,6 +286,7 @@ init_ui = function() {
       });
     }
 
+
     w.rptr('mk-log-elem').mod(w.mkfn(mk_log_elem2));
 
 
@@ -318,7 +319,7 @@ init_ui = function() {
 
   mouse_init();
   console.log('input ready');
-  print_update();
+  //print_update();
 }
 
 
