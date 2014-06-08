@@ -17,11 +17,11 @@ call { fn: ref, args: [ref] }
 app  { fn: ref, args: [ref] }
  */
 
-Env = function() {
+var log = function() {
   this.time = 0;
   this.heap = [];
 }
-Env.prototype = {
+log.prototype = {
 
   look: function(ref) {
     return this.heap[ref];
@@ -77,11 +77,11 @@ Env.prototype = {
   },
 }
 
-World = function(other_root, other_log) {
+var context = function(other_root, other_log) {
   var w = this;
 
   // The Log
-  w.log = new Env();
+  w.log = new log();
   w.current_cause = {};
 
   // This holds data objects
@@ -102,7 +102,6 @@ World = function(other_root, other_log) {
   // For Replays
   w.replay_time = undefined;
 
-
   // TODO delete
   // Cause will be undefined; see below
   //var root_obj = this.mk('root');
@@ -115,7 +114,7 @@ World = function(other_root, other_log) {
 
 }
 
-World.prototype = {
+context.prototype = {
 
   load: function(root, other_log) {
     var w = this;
@@ -439,6 +438,10 @@ World.prototype = {
     w.replay_time = undefined;
 
   },
+}
 
+module.exports = {
+  log: log,
+  context: context,
 }
 

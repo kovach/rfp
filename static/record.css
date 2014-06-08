@@ -16,7 +16,6 @@ ul {
   padding: 10;
   padding-right: 23px;
   list-style:none;
-  color: #fff;
   height: 0px;
 
   box-sizing: border-box;
@@ -26,6 +25,7 @@ ul {
 }
 .log {
   background-color: #002b36;
+  color: #fff;
   font-size: 12pt;
   min-width: 28px;
 
@@ -71,4 +71,20 @@ ul {
 .filler {
   width: 100%;
   display: table-cell;
+}
+
+#ww {
+  min-width: 200px;
+  width: 200px;
+  height: 100%;
+  background-color: #cc7700;
+  white-space: pre-wrap;
+}
+#cursor {
+  background-color: #ff0000;
+  display: inline-block;
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -o-box-sizing: border-box;
 }

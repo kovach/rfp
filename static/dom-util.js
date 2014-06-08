@@ -19,6 +19,9 @@ createElement = function(type, cl, id) {
   entry.setAttribute('id', id);
   return entry;
 }
+createDiv = function(parent, id) {
+  return parent.appendChild(createElement('div', 'div-class', id));
+}
 createText = function(object, text) {
   return object.appendChild(document.createTextNode(text));
 }

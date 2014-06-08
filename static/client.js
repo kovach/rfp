@@ -2,19 +2,20 @@
 // add symbol method
 // do causes/effects on log
 // state viewer
+var C = require ('./heap/heap');
 var app_root = "/d";
 var w;
 var session;
 var current_time = 0;
 console.log('CLIENT');
 
-print_update = function() {
+var print_update = function() {
   w.log.print_from(current_time);
   current_time = w.log.time;
 }
 
 // Begins initialization
-req = new XMLHttpRequest();
+var req = new XMLHttpRequest();
 req.onreadystatechange = function() {
   //TODO check for server error
   if (req.readyState == 4 && req.status == 200) {
@@ -25,7 +26,7 @@ req.onreadystatechange = function() {
         session = json.session;
         var data = json.data;
         //console.log('req. data: ', data);
-        w = new World();
+        w = new C.context();
         _.each(data,
             function(entry, ind) {
               w.log.add(entry);
@@ -51,14 +52,14 @@ req.onreadystatechange = function() {
   }
 };
 
-start_session = function() {
+var start_session = function() {
   msg = 'start';
   req.open("POST", app_root + '/start_session', true);
   req.send();
 }
 
 //TODO
-send_entry = function() {
+var send_entry = function() {
   msg = 'send';
   req.open("POST", app_root + '/send?data=' +
       undefined +
@@ -67,7 +68,7 @@ send_entry = function() {
 }
 
 
-to_button = function(ev) {
+var to_button = function(ev) {
   switch(ev.button) {
     case 0:
       return w.r('mouse-left');
@@ -81,7 +82,7 @@ to_button = function(ev) {
   }
 }
 
-init_ui = function() {
+var init_ui = function() {
   w.rptr('load-std-lib').mod(w.mkfn(load_std_lib));
   w.call(w.r('load-std-lib'));
 
@@ -322,5 +323,9 @@ init_ui = function() {
   //print_update();
 }
 
-
 start_session();
+
+module.exports = {
+  start_session: start_session,
+  w: w,
+}

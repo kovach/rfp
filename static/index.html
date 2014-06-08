@@ -5,19 +5,21 @@
 </head>
 <body bg-color="black">
 
+<!--
 <script src="lib/underscore.js"></script>
 
 <script src="ui-types.js"></script>
 <script src="heap/heap.js"></script>
-<!--<script src="heap/compact.js"></script>-->
 
 <script src="init_world.js"></script>
 <script src="dom-util.js"></script>
 <script src="std-lib.js"></script>
 <script src="client.js"></script>
-<!--<script src="heap/patch.js"></script>-->
 
-<script src="bundle.js"></script>
+
+<script src="test-bundle.js"></script>
+-->
+<script src="patches-bundle.js"></script>
 
 
 <div id = 'main', class="stuff">
@@ -43,6 +45,31 @@ var mk_log = function(id, str, n) {
 
   return div;
 }
+
+var mk_ww = function() {
+  var div = document.createElement('div'); 
+  div.setAttribute('class', 'log');
+  div.setAttribute('id', 'ww');
+  document.getElementById('main').appendChild(div);
+  var string = 'hello there this is a long string;\n that I hope will wrap nicely.';
+
+  for(var i = 0; i < string.length; i++) {
+    if (string[i] === ' ') {
+      createText(div, string[i]);
+    } else {
+      createText(div, string[i]);
+    }
+  }
+  var cursor = createDiv(div, 'cursor');
+  createText(cursor, ' ');
+  return cursor;
+}
+//var ww = mk_ww();
+//var nl = _.find(ww.parentNode.childNodes, function(node) {
+//    if (node.data === '\n') {
+//      return true;
+//    }
+//});
 //var hi = mk_log('', 'hi', 100);
 //var there = mk_log('', 'there', 500);
 </script>
