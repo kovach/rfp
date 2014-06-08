@@ -10,6 +10,10 @@ var load_exports = function(c, mod) {
   _.each(mod.exports, function(val, key) {
     c.rptr(key).mod(c.mkfn(val));
   });
+  _.each(mod.init, function(name) {
+    console.log('calling: ', name);
+    c.call(c.r(name));
+  });
 }
 
 module.exports = {

@@ -1,3 +1,6 @@
+var mk_symbols = function() {
+  rptr('nil').mod(mk('nil'));
+}
 var each_fn = function(list, fn) {
   if (list.head === 'cons') {
     call(fn, list.r('head'));
@@ -8,7 +11,7 @@ var each_fn = function(list, fn) {
   } 
 }
 
-var send_msg = function(msg, self) {
+var send = function(msg, self) {
   var h = self.r(msg.head);
   if (h) {
     call(h, self, msg);
@@ -25,8 +28,11 @@ var init_obj = function(self) {
 }
 
 module.exports = {
+  init: ['mk_symbols'],
+
   exports: {
-    send_msg: send_msg,
+    mk_symbols: mk_symbols,
+    send: send,
     add_map: add_map,
     init_obj: init_obj,
 

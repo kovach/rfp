@@ -19,33 +19,36 @@
 
 <script src="test-bundle.js"></script>
 -->
+
+
+<div id = 'main'>
+<!--<div class=filler>
+</div>
+-->
+</div>
+
 <script src="patches-bundle.js"></script>
 
-
-<div id = 'main', class="stuff">
-<div class=filler>
-</div>
-</div>
 <script>
 
-var mk_log = function(id, str, n) {
-  var div = document.createElement('div'); 
-  div.setAttribute('class', 'log');
-  div.setAttribute('id', id);
-  //div.className = 'log';
-  var ul = document.createElement('ul');
-  div.appendChild(ul);
-  for(var i = 0; i < n; i++) {
-    var entry = document.createElement('li');
-    entry.appendChild(document.createTextNode(str));
-    ul.appendChild(entry);
-  }
-  document.getElementById('stuff').appendChild(div);
-  div.scrollByLines(n);
-
-  return div;
-}
-
+//var mk_log = function(id, str, n) {
+//  var div = document.createElement('div'); 
+//  div.setAttribute('class', 'log');
+//  div.setAttribute('id', id);
+//  //div.className = 'log';
+//  var ul = document.createElement('ul');
+//  div.appendChild(ul);
+//  for(var i = 0; i < n; i++) {
+//    var entry = document.createElement('li');
+//    entry.appendChild(document.createTextNode(str));
+//    ul.appendChild(entry);
+//  }
+//  document.getElementById('stuff').appendChild(div);
+//  div.scrollByLines(n);
+//
+//  return div;
+//}
+//
 var mk_ww = function() {
   var div = document.createElement('div'); 
   div.setAttribute('class', 'log');

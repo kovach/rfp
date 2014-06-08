@@ -1,4 +1,5 @@
-// TODO
+var _ = require('underscore');
+
 T = {}
 T.ptr_root = 'ptr-root';
 T.ptr_edit = 'ptr-edit';
@@ -320,13 +321,14 @@ context.prototype = {
       fn: fn.ref,
       args: _.pluck(args, 'ref'),
     };
-    app_ref = this.add(entry);
+    var app_ref = this.add(entry);
 
     var closure = {
       ref: app_ref,
       fn: fn.fn,
       args: fn.args.concat(args),
     };
+    this.data[app_ref] = closure;
 
     return closure;
   },
@@ -338,7 +340,7 @@ context.prototype = {
       args: _.pluck(args, 'ref'),
     };
     // Log the call
-    call_ref = this.add(entry);
+    var call_ref = this.add(entry);
     //var fn_obj = this.lookd(fn_ref);
     var temp_cause = this.current_cause;
     this.current_cause = {ref: call_ref, count: 0};

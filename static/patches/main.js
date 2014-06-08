@@ -2,14 +2,41 @@ var _   = require('underscore');
 w   = require('../heap/heap.js');
 util = require('../util/util.js');
 
-var p   = require('../patches/objects.js');
-dom = require('../dom/objects.js');
+base    = require('../base/objects.js');
+dom     = require('../dom/objects.js');
+patches = require('../patches/objects.js');
+
+dom_extern = require ('../dom-util.js');
+
+
+var current_time = 0;
+print_update = function() {
+  c.log.print_from(current_time);
+  current_time = c.log.time;
+}
 
 c = new w.context();
+mk_test = function() {
 
-o1 = {x: 0, y: 1};
-o2 = {a: 0, b: 1};
-util.merge_obj(o1, o2);
+  util.load_exports(c, base);
+  util.load_exports(c, dom);
+  util.load_exports(c, patches);
 
-util.load_exports(c, p);
-util.load_exports(c, dom);
+  var elem = c.call(c.r('mk_elem'), c.mk('div'), c.mk('p-text'));
+  var node = c.call(elem.r('node'));
+  dom_extern.getElement('main').appendChild(node);
+  c.rptr('elem1').mod(elem);
+  c.call(c.r('mk_box'), elem);
+  c.call(c.r('mk_text'), elem, mk('hello world.'));
+
+  print_update();
+}
+
+module.exports = {
+  init: ['mk_test'],
+  exports: {
+    mk_test: mk_test
+  },
+}
+
+util.load_exports(c, module.exports);

@@ -19,12 +19,23 @@ createElement = function(type, cl, id) {
   entry.setAttribute('id', id);
   return entry;
 }
-createDiv = function(parent, id) {
-  return parent.appendChild(createElement('div', 'div-class', id));
+createDiv = function(parent, cl, id) {
+  return parent.appendChild(createElement('div', cl, id));
 }
 createText = function(object, text) {
   return object.appendChild(document.createTextNode(text));
 }
 getElement = function(id) {
   return document.getElementById(id);
+}
+appendDoc = function(node) {
+  return document.getElementById('main').appendChild(node);
+}
+
+module.exports = {
+  createElement: createElement,
+  createDiv: createDiv,
+  getElement: getElement,
+  createText: createText,
+  appendDoc: appendDoc,
 }
