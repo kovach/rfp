@@ -89,7 +89,8 @@ var removeElement = function(node) {
   return new entry(ref, node);
 }
 
-var do_effect = function(entry) {
+var do_effect = function(ref) {
+  var entry = effect_log.look(ref);
   switch (entry.type) {
     case 'add':
       entry.parent.appendChild(entry.node);
@@ -99,7 +100,8 @@ var do_effect = function(entry) {
       break;
   }
 }
-var undo_effect = function(entry) {
+var undo_effect = function(ref) {
+  var entry = effect_log.look(ref);
   switch (entry.type) {
     case 'remove':
       entry.parent.appendChild(entry.node);

@@ -36,7 +36,7 @@ var mk_elem = function(parent_id, obj, type, cl) {
       type.head, cl.head, elem.r('id').head);
   newptr(elem, 'node').mod(app(r('div_get_node'), elem));
 
-  dom_extern.appendId(parent_id.head, node);
+  extern(dom_extern.appendId(parent_id.head, node));
   return elem;
 }
 
@@ -49,7 +49,7 @@ var mk_text = function(parent, str, mouseHandlers) {
   var node = call(elem.r('node'));
 
   //newptr(elem, 'id').mod(call(r('fresh_name')));
-  var text_node = dom_extern.createText(node, str.head);
+  var text_node = extern(dom_extern.createText(node, str.head));
   if (mouseHandlers) {
     call(r('add_mouse'), elem, mouseHandlers);
   }

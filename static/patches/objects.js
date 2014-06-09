@@ -39,6 +39,10 @@ var line_edit_handler = function(self, key) {
       call(r('toggle_mode'), self);
       break;
     case 'ESC':
+      make_dependent();
+      break;
+    case 'j':
+      dependent.forward();
       break;
     default:
       if (self.r('mode').head === 'on') {
@@ -57,6 +61,9 @@ var mk_line = function() {
   var box = call(r('mk_key_box'), r('line_edit_handler'));
   newptr(box, 'mode').mod(mk('off'));
   return box;
+}
+
+var copy_log = function(context) {
 }
 
 module.exports = {

@@ -8,6 +8,7 @@ T.fn   = 'fn';
 T.fn_call = 'fn-call';
 T.fn_app = 'fn-app';
 T.extern = 'ext';
+T.root = 'r';
 /*
 "Type Def":
 each has a type field
@@ -65,6 +66,12 @@ log.prototype = {
     this.heap = JSON.parse(str);
     this.time = this.heap.length;
   },
+  copy: function() {
+    var l = new log();
+    l.heap = JSON.parse(this.serialize());
+    l.time = this.time;
+    return l;
+  },
 
   sref: function(ref) {
     return JSON.stringify([ref, this.look(ref)]);
@@ -83,7 +90,7 @@ log.prototype = {
   },
 }
 
-var context = function(other_root, other_log) {
+var context = function(other_context) {
   var w = this;
 
   // The Log
@@ -99,15 +106,14 @@ var context = function(other_root, other_log) {
   // For time manipulation
   w.cursor_log = new log();
 
-  // Load other log
-  if (other_root && other_log) {
-    console.log('LOADING:', other_root, other_log);
-    w.load(other_root, other_log);
-    w.log.print();
-  } else { 
-    this.mkroot();
-  }
+  w.mkroot();
 
+  // Load other log
+  if (other_context) {
+    console.log('LOADING');
+    w.log = other_context.log.copy();
+    w.cursor = 1;
+  }
 
   // For Replays
   w.replay_time = undefined;
@@ -126,14 +132,29 @@ var context = function(other_root, other_log) {
 
 context.prototype = {
 
-  load: function(root, other_log) {
-    var w = this;
-    w.root = root;
-    w.current_cause = {ref: root.ref, count: 1};
-    _.each(other_log.heap, function(entry, ind) {
-      w.log.add(entry);
-      w.do_op(ind, entry);
-    });
+  //load: function(root, other_log) {
+  //  var w = this;
+  //  w.root = root;
+  //  w.current_cause = {ref: root.ref, count: 1};
+  //  _.each(other_log.heap, function(entry, ind) {
+  //    w.log.add(entry);
+  //    w.do_op(ind, entry);
+  //  });
+  //},
+
+  forward: function() {
+    var c = this.cursor;
+    if (c < this.log.time) {
+      console.log('step: ', c);
+      this.do_op(c, this.lookr(c));
+      this.cursor++;
+    } else {
+      console.log('forward. end');
+    }
+  },
+
+  make_dependent: function() {
+    this.dependent = new context(this);
   },
 
   // Log: 1 member
@@ -195,6 +216,9 @@ context.prototype = {
     var new_root = this.mk('root');
     this.root = new_root;
     this.current_cause = {ref: new_root.ref, count: 1};
+
+    return new_root;
+
     //// Get raw log entry for potential modification :/
     //var entry = this.log.look(new_root.ref);
     //if (entry.cause.ref === undefined) {
@@ -307,7 +331,6 @@ context.prototype = {
     var ref = this.add(entry);
 
     return this.do_mk(ref, entry);
-
   },
   mktup: function(head, fields) {
     var w = this;
@@ -390,15 +413,15 @@ context.prototype = {
   },
 
   undo_extern: function(entry) {
-    return dom_extern.undo_effect(entry);
+    return dom_extern.undo_effect(entry.ref);
   },
   do_extern: function(entry) {
-    return dom_extern.do_effect(entry);
+    return dom_extern.do_effect(entry.ref);
   },
   extern: function(entry) {
     this.add({
       type: T.extern,
-      val: entry,
+      ref: entry.ref,
     });
 
     return entry.node;
