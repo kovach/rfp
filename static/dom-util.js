@@ -4,38 +4,59 @@ addHandler = function(ev, fn) {
 addH = function(obj, ev, fn) {
   return obj.addEventListener(ev, fn);
 }
-addMouse = function(obj, fn) {
-  addH(obj, 'click', fn);
+addMouse = function(obj, handlers) {
+  addH(obj, 'click', function(ev) {
+    handlers.left();
+  });
   addH(obj, 'contextmenu',  function(ev) {
-    fn(ev);
+    handlers.right();
     ev.preventDefault();
   });
 }
-
+addKey = function(obj, handler) {
+  addH(obj, 'keypress', function(ev) {
+    var c = String.fromCharCode(ev.keyCode);
+    console.log('code ', ev.keyCode);
+    if (ev.keyCode === 13) {
+      c = '\n';
+    }
+    handler(c);
+  });
+}
 
 createElement = function(type, cl, id) {
   var entry = document.createElement(type);
   entry.setAttribute('class', cl);
   entry.setAttribute('id', id);
+  entry.setAttribute('tabindex', 1);
   return entry;
 }
 createDiv = function(parent, cl, id) {
   return parent.appendChild(createElement('div', cl, id));
 }
 createText = function(object, text) {
-  return object.appendChild(document.createTextNode(text));
+  var node = object.appendChild(document.createTextNode(text));
+  return node;
 }
 getElement = function(id) {
   return document.getElementById(id);
 }
+appendId = function(parent_id, node) {
+  return getElement(parent_id).appendChild(node);
+}
 appendDoc = function(node) {
-  return document.getElementById('main').appendChild(node);
+  return getElement('main').appendChild(node);
 }
 
 module.exports = {
+  addMouse: addMouse,
+  addKey: addKey,
+
   createElement: createElement,
   createDiv: createDiv,
-  getElement: getElement,
   createText: createText,
+  appendId: appendId,
   appendDoc: appendDoc,
+
+  getElement: getElement,
 }

@@ -28,34 +28,55 @@ var div_get_node = function(self) {
   return dom_extern.getElement(self.r('id').head);
 }
 // Make element, append to main
-var mk_elem = function(type, cl) {
-  var elem = call(r('init_obj'), mk('elem'));
+var mk_elem = function(parent_id, obj, type, cl) {
+  var elem = obj;
+  //var elem = call(r('init_obj'), obj);
   newptr(elem, 'id').mod(call(r('fresh_name')));
   var node = dom_extern.createElement(
       type.head, cl.head, elem.r('id').head);
   newptr(elem, 'node').mod(app(r('div_get_node'), elem));
 
-  dom_extern.appendDoc(node);
+  dom_extern.appendId(parent_id.head, node);
   return elem;
 }
-var mk_box = function(parent) {
-  var div = call(r('init_obj'), mk('div'));
 
-  newptr(div, 'id').mod(call(r('fresh_name')));
+var mk_text = function(parent, str, mouseHandlers) {
+  var pnode = call(parent.r('node'));
+  var elem = mk('t');
 
-  // TODO extern log entry?
-  var node = dom_extern.createDiv(
-      call(parent.r('node')), 'box-div', div.r('id').head);
+  call(r('mk_elem'), parent.r('id'), elem,
+      mk('div'), mk('str'));
+  var node = call(elem.r('node'));
 
-  newptr(div, 'node').mod(app(r('div_get_node'), div));
-  newptr(div, 'mouse-over').mod(r('div_mouse_over'));
-  newptr(div, 'mouse-out').mod(r('div_mouse_out'));
+  //newptr(elem, 'id').mod(call(r('fresh_name')));
+  var text_node = dom_extern.createText(node, str.head);
+  if (mouseHandlers) {
+    call(r('add_mouse'), elem, mouseHandlers);
+  }
 }
-var mk_text = function(parent, str) {
-  var node = call(parent.r('node'));
-  _.each(str.head, function(c) {
-    dom_extern.createText(node, c);
-  });
+
+var add_mouse = function(elem, handlers) {
+  var node = call(elem.r('node'));
+  var left = function(ev) {
+    call(handlers.r('left'), elem);
+  }
+  var right = function(ev) {
+    call(handlers.r('right'), elem);
+  }
+  dom_extern.addMouse(node,
+      { left: left,
+        right: right,
+      });
+}
+
+var add_key = function(elem, handler) {
+  var node = call(elem.r('node'));
+  var press = function(char) {
+    call(handler, elem, mk(char));
+  }
+  console.log('ELEM: ', elem);
+  console.log('NODE: ', node);
+  dom_extern.addKey(node, press);
 }
 
 
@@ -71,7 +92,9 @@ module.exports = {
     div_get_node: div_get_node,
 
     mk_elem: mk_elem,
-    mk_box: mk_box,
     mk_text: mk_text,
+
+    add_mouse: add_mouse,
+    add_key: add_key,
   },
 }

@@ -60,28 +60,32 @@ ul {
   overflow: auto;
   display: table;
   height: 100%;
-  position: inline;
   top: 0; right: 0; bottom: 0; left: 0;
+
+  border-spacing: 4;
 
   box-sizing: border-box;
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   -o-box-sizing: border-box;
 }
-.filler {
-  width: 100%;
-  display: table-cell;
-}
 
 .p-text {
   color: #fff;
   font-size: 12pt;
-  background-color: #569;
+  background-color: #457;
   white-space: pre-wrap;
+
+  display: table-cell;
+  outline: none;
+  margin: 20;
 
   min-width: 300px;
   width: 300px;
   height: 100%;
+}
+.str {
+  display: inline;
 }
 
 .cursor, .box-div {

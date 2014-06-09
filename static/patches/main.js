@@ -14,6 +14,7 @@ print_update = function() {
   c.log.print_from(current_time);
   current_time = c.log.time;
 }
+p = print_update;
 
 c = new w.context();
 mk_test = function() {
@@ -22,12 +23,15 @@ mk_test = function() {
   util.load_exports(c, dom);
   util.load_exports(c, patches);
 
-  var elem = c.call(c.r('mk_elem'), c.mk('div'), c.mk('p-text'));
-  var node = c.call(elem.r('node'));
-  dom_extern.getElement('main').appendChild(node);
-  c.rptr('elem1').mod(elem);
-  c.call(c.r('mk_box'), elem);
-  c.call(c.r('mk_text'), elem, mk('hello world.'));
+  c.call(c.r('mk_line'));
+  c.call(c.r('mk_line'));
+
+  //var elem = c.call(c.r('mk_elem'), c.mk('div'), c.mk('p-text'));
+  //var node = c.call(elem.r('node'));
+  //dom_extern.appendDoc(node);
+  //c.rptr('elem1').mod(elem);
+  //c.call(c.r('mk_box'), elem);
+  //c.call(c.r('mk_text'), elem, mk('hello world.'));
 
   print_update();
 }
