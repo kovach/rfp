@@ -24,6 +24,9 @@ var addKey = function(obj, handler) {
       c = '\n';
     }
     handler(c);
+    ev.preventDefault();
+    ev.stopPropagation();
+    return false;
   });
   addH(obj, 'keydown', function(ev) {
     //console.log('down', ev.keyCode);
@@ -36,6 +39,9 @@ var addKey = function(obj, handler) {
       return;
     }
     handler(c);
+    ev.preventDefault();
+    ev.stopPropagation();
+    return false;
   });
 }
 

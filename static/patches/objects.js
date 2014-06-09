@@ -50,13 +50,22 @@ var mouse_handler_init = function() {
   var step_obj = mk('mouse_handlers');
   rptr('stepper_mouse_handler').mod(step_obj);
   newptr(step_obj, 'left').mod(mkfn(function(self) {
-    console.log('you clicked: ', self.r('ref'));
-    //global_set_viewer(self.ref);
+    var mref = self.r('ref');
+    if (mref) {
+      console.log('you clicked: ', mref);
+      call(r('mk_viewer'), mref);
+    }
   }));
   newptr(step_obj, 'right').mod(mkfn(function(self) {
   }));
 
 
+}
+var remove_children = function(self) {
+  var node = call(self.r('node'));
+  while(node.firstChild) {
+    extern(dom_extern.removeElement(node.firstChild));
+  }
 }
 var stepper_handler= function(self, key) {
   switch (key.head) {
@@ -68,10 +77,11 @@ var stepper_handler= function(self, key) {
       break;
     case 'J':
       var refs = dependent.forward_frame();
-      var node = call(self.r('node'));
-      while(node.firstChild) {
-        extern(dom_extern.removeElement(node.firstChild));
-      }
+      call(r('remove_children'), self);
+      //var node = call(self.r('node'));
+      //while(node.firstChild) {
+      //  extern(dom_extern.removeElement(node.firstChild));
+      //}
       _.each(refs, function(ref) {
         call(r('log_entry'), self, mk(ref));
       });
@@ -79,16 +89,17 @@ var stepper_handler= function(self, key) {
     case 'K':
       var refs = dependent.backward_frame();
       refs.reverse();
-      console.log(refs);
-      var node = call(self.r('node'));
-      while(node.firstChild) {
-        extern(dom_extern.removeElement(node.firstChild));
-      }
+      call(r('remove_children'), self);
+      //var node = call(self.r('node'));
+      //while(node.firstChild) {
+      //  extern(dom_extern.removeElement(node.firstChild));
+      //}
       _.each(refs, function(ref) {
         call(r('log_entry'), self, mk(ref));
       });
+      break;
     case 'ESC':
-      //global_mk_viewer();
+      //call(r('mk_viewer'));
       break;
   }
 }
@@ -114,6 +125,15 @@ var line_edit_handler = function(self, key) {
       break;
   }
 }
+var view_handler = function(self, key) {
+  switch (key.head) {
+    case 'ESC':
+      dom_extern.removeElement(call(self.r('node')));
+      break;
+  }
+}
+var null_handler = function(self, key) {
+}
 var mk_line = function() {
   var box = call(r('mk_key_box'), r('line_edit_handler'), mk('p-text'));
   newptr(box, 'mode').mod(mk('off'));
@@ -123,6 +143,32 @@ var mk_line = function() {
 var mk_stepper = function() {
   var box = call(r('mk_key_box'), r('stepper_handler'), mk('stepper'));
   return box;
+}
+var mk_viewer = function(ref) {
+  var box = call(r('mk_key_box'), r('view_handler'), mk('viewer'));
+  call(r('update_view'), box, ref);
+  //rptr('the_view').mod(box);
+}
+var update_view = function(box, ptr) {
+  var ref = ptr.head;
+  //var box = r('the_view');
+  if (box) {
+    var entry = lookr(ref).val;
+    console.log('ENTRY: ', entry);
+    call(r('remove_children'), box);
+    switch (entry.type) {
+      case T.fn:
+        var str = entry.fn;
+        call(r('mk_text'), box, mk(str));
+        break;
+      case T.data:
+        var refs = get_causes(ref);
+        _.each(refs, function(ref) {
+          call(r('log_entry'), box, mk(ref));
+        });
+        break;
+    }
+  }
 }
 
 var log_entry = function(self, ind) {
@@ -134,19 +180,22 @@ var log_entry = function(self, ind) {
   var raw = function(str) {
     return {val: str};
   }
+  var wref = function(str) {
+    return {ref: ref, val: str};
+  }
   var space = raw(' ');
-  var pp_type = function(type) {
+  var pp_type = function(ref, type) {
     switch (type) {
       case T.ptr_edit:
-        return [raw('mod'), space];
+        return [wref('mod'), space];
       case T.ptr_root:
-        return [raw('new'), space];
+        return [wref('new'), space];
       case T.fn_call:
-        return [raw('call'), space];
+        return [wref('call'), space];
       case T.data:
-        return [raw('data'), raw("'")];
+        return [wref('data'), raw("'")];
       default:
-        return [raw('type'), space];
+        return [wref(type), space];
     }
   }
 
@@ -157,7 +206,7 @@ var log_entry = function(self, ind) {
 
   var pp_entry = function(ref) {
     var entry = lookr(ref).val;
-    var result = pp_type(entry.type);
+    var result = pp_type(ref, entry.type);
     switch (entry.type) {
       case T.data:
         result = result.concat([{ref: ref, val: entry.head}, raw("'")]);
@@ -216,13 +265,13 @@ var log_entry = function(self, ind) {
 
   call(r('mk_text'), self, mk('\n'));
 }
-var log_frame = function(self, ind) {
-  var ref = ind.head;
-  while (!match_obj(ref, 'FRAME')) {
-    call(r('log_entry'), self, mk(ref));
-    ref++;
-  }
-}
+//var log_frame = function(self, ind) {
+//  var ref = ind.head;
+//  while (!match_obj(ref, 'FRAME')) {
+//    call(r('log_entry'), self, mk(ref));
+//    ref++;
+//  }
+//}
 
 var copy_log = function(context) {
 }
@@ -233,13 +282,20 @@ module.exports = {
     mouse_handler_init: mouse_handler_init,
     line_edit_handler: line_edit_handler,
     stepper_handler: stepper_handler,
+    null_handler: null_handler,  
+    view_handler: view_handler,
 
     mk_key_box: mk_key_box,
     toggle_mode: toggle_mode,
 
     mk_line: mk_line,
     mk_stepper: mk_stepper,
+    mk_viewer: mk_viewer,
+    update_view: update_view,
+
     log_entry: log_entry,
-    log_frame: log_frame,
+    //log_frame: log_frame,
+
+    remove_children: remove_children,
   },
 }

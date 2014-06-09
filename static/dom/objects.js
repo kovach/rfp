@@ -28,9 +28,8 @@ var div_get_node = function(self) {
   return dom_extern.getElement(self.r('id').head);
 }
 // Make element, append to main
-var mk_elem = function(parent_id, obj, type, cl) {
-  var elem = obj;
-  //var elem = call(r('init_obj'), obj);
+var mk_elem = function(parent_id, elem, type, cl) {
+  //var elem = obj;
   newptr(elem, 'id').mod(call(r('fresh_name')));
   var node = dom_extern.createElement(
       type.head, cl.head, elem.r('id').head);
@@ -48,7 +47,6 @@ var mk_text = function(parent, str, mouseHandlers) {
       mk('div'), mk('str'));
   var node = call(elem.r('node'));
 
-  //newptr(elem, 'id').mod(call(r('fresh_name')));
   var text_node = extern(dom_extern.createText(node, str.head));
   if (mouseHandlers) {
     call(r('add_mouse'), elem, mouseHandlers);
