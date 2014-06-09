@@ -257,6 +257,9 @@ context.prototype = {
       l: function(name) {
         return this.names[name];
       },
+      set: function(name, val) {
+        return this.l(name).mod(val);
+      },
       r: function(name) {
         if (this.names[name]) {
           return this.names[name].r();
@@ -440,6 +443,14 @@ context.prototype = {
     w.replay_time = undefined;
 
   },
+}
+
+var match = function(data, cases) {
+  return _.find(cases, function(body, head) {
+    if (data.head === head) {
+      return true;
+    }
+  });
 }
 
 module.exports = {

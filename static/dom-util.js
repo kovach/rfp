@@ -15,10 +15,22 @@ addMouse = function(obj, handlers) {
 }
 addKey = function(obj, handler) {
   addH(obj, 'keypress', function(ev) {
+    //console.log('code ', ev.keyCode);
     var c = String.fromCharCode(ev.keyCode);
-    console.log('code ', ev.keyCode);
     if (ev.keyCode === 13) {
       c = '\n';
+    }
+    handler(c);
+  });
+  addH(obj, 'keydown', function(ev) {
+    //console.log('down', ev.keyCode);
+    var c;
+    if (ev.keyCode === 17) {
+      c = 'CTRL';
+    } else if (ev.keyCode === 27) {
+      c = 'ESC';
+    } else {
+      return;
     }
     handler(c);
   });
