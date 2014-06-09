@@ -45,6 +45,9 @@ var mk_add = function(parent, node) {
 var mk_remove = function(parent, node) {
   return effect_log.add({type: 'remove', parent: parent, node: node});
 }
+//var mk_color = function(node, color) {
+//  return effect_log.add({type: 'color', node: node, color: color});
+//}
 var entry = function(ref, node) {
   this.ref = ref;
   this.node = node;

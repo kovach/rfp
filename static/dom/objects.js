@@ -53,6 +53,7 @@ var mk_text = function(parent, str, mouseHandlers) {
   if (mouseHandlers) {
     call(r('add_mouse'), elem, mouseHandlers);
   }
+  return elem;
 }
 
 var add_mouse = function(elem, handlers) {

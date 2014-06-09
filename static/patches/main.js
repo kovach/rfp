@@ -27,6 +27,8 @@ var global_mk_stepper = function(ref) {
   nc.rptr('stepper').mod(nc.call(nc.r('mk_stepper')));
   nc.call(nc.r('log_frame'), nc.r('stepper'), nc.mk(c.cursor));
 }
+global_mk_viewer = function() {
+}
 
 var globals = {
   global: 22,

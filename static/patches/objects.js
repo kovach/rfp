@@ -38,13 +38,22 @@ var toggle_mode = function(self) {
   //console.log(self.r('mode'));
 }
 var mouse_handler_init = function() {
-  var obj = mk('mouse_handlers');
-  rptr('char_mouse_handler').mod(obj);
+  var char_obj = mk('mouse_handlers');
+  rptr('char_mouse_handler').mod(char_obj);
 
-  newptr(obj, 'left').mod(mkfn(function(self) {
+  newptr(char_obj, 'left').mod(mkfn(function(self) {
   }));
-  newptr(obj, 'right').mod(mkfn(function(self) {
+  newptr(char_obj, 'right').mod(mkfn(function(self) {
     global_mk_stepper(self.ref);
+  }));
+
+  var step_obj = mk('mouse_handlers');
+  rptr('stepper_mouse_handler').mod(step_obj);
+  newptr(step_obj, 'left').mod(mkfn(function(self) {
+    console.log('you clicked: ', self.r('ref'));
+    //global_set_viewer(self.ref);
+  }));
+  newptr(step_obj, 'right').mod(mkfn(function(self) {
   }));
 
 
@@ -69,6 +78,8 @@ var stepper_handler= function(self, key) {
       break;
     case 'K':
       var refs = dependent.backward_frame();
+      refs.reverse();
+      console.log(refs);
       var node = call(self.r('node'));
       while(node.firstChild) {
         extern(dom_extern.removeElement(node.firstChild));
@@ -76,6 +87,8 @@ var stepper_handler= function(self, key) {
       _.each(refs, function(ref) {
         call(r('log_entry'), self, mk(ref));
       });
+    case 'ESC':
+      //global_mk_viewer();
       break;
   }
 }
@@ -116,22 +129,90 @@ var log_entry = function(self, ind) {
   var ref = ind.head;
   var entry = lookr(ref).val;
 
+  // Printing utilities
+  // TODO move to ../heap?
+  var raw = function(str) {
+    return {val: str};
+  }
+  var space = raw(' ');
+  var pp_type = function(type) {
+    switch (type) {
+      case T.ptr_edit:
+        return [raw('mod'), space];
+      case T.ptr_root:
+        return [raw('new'), space];
+      case T.fn_call:
+        return [raw('call'), space];
+      case T.data:
+        return [raw('data'), raw("'")];
+      default:
+        return [raw('type'), space];
+    }
+  }
+
   call(r('mk_text'), self, ind);
   call(r('mk_text'), self, mk(' '));
-  call(r('mk_text'), self, mk(entry.type));
-  call(r('mk_text'), self, mk(' '));
+ //call(r('mk_text'), self, mk(pp(entry.type)));
+ //call(r('mk_text'), self, mk(' '));
 
-  switch (entry.type) {
-    case T.data:
-      call(r('mk_text'), self, mk(entry.head));
-      break;
-    case T.fn:
-      break;
-    case T.data:
-      break;
-    case T.data:
-      break;
+  var pp_entry = function(ref) {
+    var entry = lookr(ref).val;
+    var result = pp_type(entry.type);
+    switch (entry.type) {
+      case T.data:
+        result = result.concat([{ref: ref, val: entry.head}, raw("'")]);
+        //call(r('mk_text'), self, mk(entry.head));
+        break;
+      case T.fn:
+      case T.fn_app:
+        var mname = lookd(ref).fn_name_guess;
+        if (mname) {
+          result = result.concat([{ref: ref, val: "'" + mname + "'"}]);
+        }
+        break;
+      case T.ptr_root:
+        result = result.concat([{ref: ref, val: "'"+entry.name+"'"},
+            raw(" in ")]).concat(pp_entry(entry.base));
+        break;
+      case T.ptr_edit:
+        console.log('EDIT ', entry);
+        var name = get_ptr_name(ref);
+        var val = entry.val;
+        result = result.concat([{ref: ref, val: name}, {val: ' -> '}]).
+          concat(pp_entry(val)); //, {ref: val, val: val+''}]);
+        break;
+      case T.fn_call:
+        var mname = lookd(entry.fn).fn_name_guess;
+        if (mname) {
+          result = result.concat([{ref: entry.fn, val: "'" + mname + "'"},
+              space]);
+        }
+        _.each(entry.args, function(ref) {
+          var next = pp_entry(ref);
+          if (next) {
+            result = result.concat(next);
+          }
+        });
+        break;
+    }
+    return result.concat([space]);
   }
+  var str = pp_entry(ref);
+
+  pp_obj = function(obj) {
+    if (obj.val) {
+      var elem = call(r('mk_text'), self,
+          mk(obj.val), r('stepper_mouse_handler'));
+
+      if (obj.ref) {
+        newptr(elem, 'ref').mod(mk(obj.ref));
+      }
+    }
+  }
+
+  _.each(str, function(obj) {
+    pp_obj(obj);
+  });
 
   call(r('mk_text'), self, mk('\n'));
 }

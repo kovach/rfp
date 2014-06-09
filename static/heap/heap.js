@@ -205,8 +205,8 @@ context.prototype = {
     var refs = [];
     while (limit < 500 && this.cursor > 0) {
       limit++;
-      if (this.match_obj(this.cursor, 'FRAME')) {
-        refs.push(this.cursor);
+      if (this.match_obj(this.cursor-1, 'FRAME')) {
+        refs.push(this.cursor-1);
         this.backward();
         return refs;
       } else {
@@ -274,6 +274,14 @@ context.prototype = {
     return this.root.r(name);
   },
 
+  get_ptr_name: function(ref) {
+    var w = this;
+    var ptr = this.lookr(ref).val;
+    while (ptr.type === T.ptr_edit) {
+      ptr = w.lookr(ptr.prior).val;
+    }
+    return ptr.name;
+  },
   tlook: function(t0, ref) {
     var w = this;
     var ptr = ref;
@@ -370,6 +378,12 @@ context.prototype = {
     ptr_obj.dref = entry.val;
     // Update at new pref
     this.ptrs[ref] = ptr_obj;
+
+    // TODO remove hack
+    var maybe_fn = this.lookd(entry.val).fn;
+    if (maybe_fn) {
+      this.lookd(entry.val).fn_name_guess = this.get_ptr_name(ref);
+    }
     return ptr_obj;
   },
 
@@ -532,10 +546,12 @@ context.prototype = {
       case T.fn:
         w.do_mkfn(ind, entry);
         break;
-      case T.app:
+      case T.fn_app:
         w.do_app(ind, entry);
+        break;
       case T.extern:
         w.do_extern(entry);
+        break;
       default:
         break;
     }
