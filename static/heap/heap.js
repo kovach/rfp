@@ -7,6 +7,7 @@ T.data = 'data';
 T.fn   = 'fn';
 T.fn_call = 'fn-call';
 T.fn_app = 'fn-app';
+T.extern = 'ext';
 /*
 "Type Def":
 each has a type field
@@ -27,6 +28,9 @@ log.prototype = {
   look: function(ref) {
     return this.heap[ref];
   },
+  set: function(ref, val) {
+    this.heap[ref] = val;
+  },
 
   lookv: function(ref) {
     return this.look(ref).val;
@@ -34,8 +38,9 @@ log.prototype = {
 
   add: function(pair) {
     var ref = this.time;
-    var val = { cause : pair.cause, val : pair.val };
-    this.heap[ref] = val;
+    //var val = { cause : pair.cause, val : pair.val };
+    //this.heap[ref] = val;
+    this.heap[ref] = pair;
     this.time += 1;
     return ref;
   },
@@ -90,6 +95,10 @@ var context = function(other_root, other_log) {
   // This holds pointers for efficient update from log
   this.ptrs = {};
 
+
+  // For time manipulation
+  w.cursor_log = new log();
+
   // Load other log
   if (other_root && other_log) {
     console.log('LOADING:', other_root, other_log);
@@ -137,6 +146,14 @@ context.prototype = {
     return ref;
   },
 
+  mk_cursor: function(time) {
+    return this.cursor_log.add(time);
+  },
+  print_from: function(cursor) {
+    this.log.print_from(this.cursor_log.look(cursor));
+    this.cursor_log.set(cursor, this.log.time);
+  },
+
   lookd: function(ref) {
     return this.data[ref];
   },
@@ -177,15 +194,16 @@ context.prototype = {
   mkroot: function() {
     var new_root = this.mk('root');
     this.root = new_root;
-    // Get raw log entry for potential modification :/
-    var entry = this.log.look(new_root.ref);
-    if (entry.cause.ref === undefined) {
-      // Do self-justification
-      entry.cause = {ref: new_root.ref, count: 0};
-      this.current_cause = {ref: new_root.ref, count: 1};
-    } else {
-      this.current_cause = {ref: new_root.ref, count: 0};
-    }
+    this.current_cause = {ref: new_root.ref, count: 1};
+    //// Get raw log entry for potential modification :/
+    //var entry = this.log.look(new_root.ref);
+    //if (entry.cause.ref === undefined) {
+    //  // Do self-justification
+    //  entry.cause = {ref: new_root.ref, count: 0};
+    //  this.current_cause = {ref: new_root.ref, count: 1};
+    //} else {
+    //  this.current_cause = {ref: new_root.ref, count: 0};
+    //}
   },
 
 
@@ -225,6 +243,13 @@ context.prototype = {
 
   rptr: function(name) {
     return this.newptr(this.root, name);
+  },
+
+  undo_modptr: function(ref, entry) {
+    var ptr_obj = this.ptrs[ref];
+    ptr_obj.pref = entry.prior;
+    ptr_obj.dref = this.lookd(this.lookr(entry.prior).val.val).ref;
+    return ptr_obj;
   },
 
   do_modptr: function(ref, entry) {
@@ -317,6 +342,22 @@ context.prototype = {
     return this.do_mkfn(ref, entry);
   },
 
+  do_app: function(ref, entry) {
+    var w = this;
+    var fn = this.lookd(entry.fn);
+    var args = _.map(entry.args, function(ref) {
+      return w.lookd(ref);
+    });
+
+    var closure = {
+      ref: ref,
+      fn: fn.fn,
+      args: fn.args.concat(args),
+    };
+    this.data[ref] = closure;
+
+    return closure;
+  },
   app: function(fn) {
     var args = Array.prototype.slice.call(arguments, 1);
     var entry = {
@@ -326,14 +367,7 @@ context.prototype = {
     };
     var app_ref = this.add(entry);
 
-    var closure = {
-      ref: app_ref,
-      fn: fn.fn,
-      args: fn.args.concat(args),
-    };
-    this.data[app_ref] = closure;
-
-    return closure;
+    return this.do_app(app_ref, entry);
   },
   call: function(fn) {
     var args = Array.prototype.slice.call(arguments, 1);
@@ -355,6 +389,21 @@ context.prototype = {
     return result;
   },
 
+  undo_extern: function(entry) {
+    return dom_extern.undo_effect(entry);
+  },
+  do_extern: function(entry) {
+    return dom_extern.do_effect(entry);
+  },
+  extern: function(entry) {
+    this.add({
+      type: T.extern,
+      val: entry,
+    });
+
+    return entry.node;
+  },
+
   do_op: function(ind, pair) {
     var w = this;
     var entry = pair.val;
@@ -372,12 +421,27 @@ context.prototype = {
       case T.fn:
         w.do_mkfn(ind, entry);
         break;
+      case T.app:
+        w.do_app(ind, entry);
+      case T.extern:
+        w.do_extern(entry);
       default:
         break;
     }
     w.log.heap[ind] = pair;
     if (ind + 1 > w.log.time) {
       w.log.count = ind + 1;
+    }
+  },
+  undo_op: function(ind, pair) {
+    var entry = pair.val;
+    switch (entry.type) {
+      case T.ptr_edit:
+        this.undo_modptr(ind, entry);
+        break;
+      case T.extern:
+        this.undo_extern(entry);
+        break;
     }
   },
 

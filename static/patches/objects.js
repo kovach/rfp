@@ -30,7 +30,7 @@ var toggle_mode = function(self) {
   } else {
     self.set('mode', mk('on'));
   }
-  console.log(self.r('mode'));
+  //console.log(self.r('mode'));
 }
 var line_edit_handler = function(self, key) {
   //console.log('key press! ', key);
@@ -56,6 +56,7 @@ var line_edit_handler = function(self, key) {
 var mk_line = function() {
   var box = call(r('mk_key_box'), r('line_edit_handler'));
   newptr(box, 'mode').mod(mk('off'));
+  return box;
 }
 
 module.exports = {

@@ -1,10 +1,13 @@
-addHandler = function(ev, fn) {
+w = require('./heap/heap.js');
+var effect_log = new w.log();
+
+var addHandler = function(ev, fn) {
   return window.addEventListener(ev, fn);
 }
-addH = function(obj, ev, fn) {
+var addH = function(obj, ev, fn) {
   return obj.addEventListener(ev, fn);
 }
-addMouse = function(obj, handlers) {
+var addMouse = function(obj, handlers) {
   addH(obj, 'click', function(ev) {
     handlers.left();
   });
@@ -13,7 +16,7 @@ addMouse = function(obj, handlers) {
     ev.preventDefault();
   });
 }
-addKey = function(obj, handler) {
+var addKey = function(obj, handler) {
   addH(obj, 'keypress', function(ev) {
     //console.log('code ', ev.keyCode);
     var c = String.fromCharCode(ev.keyCode);
@@ -36,28 +39,75 @@ addKey = function(obj, handler) {
   });
 }
 
-createElement = function(type, cl, id) {
-  var entry = document.createElement(type);
-  entry.setAttribute('class', cl);
-  entry.setAttribute('id', id);
-  entry.setAttribute('tabindex', 1);
-  return entry;
+var mk_add = function(parent, node) {
+  return effect_log.add({type: 'add', parent: parent, node: node});
 }
-createDiv = function(parent, cl, id) {
-  return parent.appendChild(createElement('div', cl, id));
+var mk_remove = function(parent, node) {
+  return effect_log.add({type: 'remove', parent: parent, node: node});
 }
-createText = function(object, text) {
-  var node = object.appendChild(document.createTextNode(text));
+var entry = function(ref, node) {
+  this.ref = ref;
+  this.node = node;
+}
+
+var createElement = function(type, cl, id) {
+  var node = document.createElement(type);
+  node.setAttribute('class', cl);
+  node.setAttribute('id', id);
+  node.setAttribute('tabindex', 1);
+
   return node;
 }
-getElement = function(id) {
+var createDiv = function(parent, cl, id) {
+  var node = createElement('div', cl, id);
+  var ref = mk_add(parent, node);
+  parent.appendChild(node);
+  return new entry(ref, node);
+}
+var createText = function(parent, text) {
+  var node = document.createTextNode(text);
+  var ref = mk_add(parent, node);
+  parent.appendChild(node);
+  return new entry(ref, node);
+}
+var getElement = function(id) {
   return document.getElementById(id);
 }
-appendId = function(parent_id, node) {
-  return getElement(parent_id).appendChild(node);
+var appendId = function(parent_id, node) {
+  var parent = getElement(parent_id);
+  var ref = mk_add(parent, node);
+  parent.appendChild(node);
+  return new entry(ref, node);
 }
-appendDoc = function(node) {
-  return getElement('main').appendChild(node);
+var appendDoc = function(node) {
+  return appendId('main', node);
+}
+var removeElement = function(node) {
+  var parent = node.parentNode;
+  var ref = mk_remove(parent, node);
+  parent.removeChild(node);
+  return new entry(ref, node);
+}
+
+var do_effect = function(entry) {
+  switch (entry.type) {
+    case 'add':
+      entry.parent.appendChild(entry.node);
+      break;
+    case 'remove':
+      entry.parent.removeChild(entry.node);
+      break;
+  }
+}
+var undo_effect = function(entry) {
+  switch (entry.type) {
+    case 'remove':
+      entry.parent.appendChild(entry.node);
+      break;
+    case 'add':
+      entry.parent.removeChild(entry.node);
+      break;
+  }
 }
 
 module.exports = {
@@ -69,6 +119,11 @@ module.exports = {
   createText: createText,
   appendId: appendId,
   appendDoc: appendDoc,
+  removeElement: removeElement,
 
   getElement: getElement,
+
+  effect_log: effect_log,
+  do_effect: do_effect,
+  undo_effect: undo_effect,
 }

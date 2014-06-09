@@ -17,14 +17,14 @@ print_update = function() {
 p = print_update;
 
 c = new w.context();
+cr1 = c.mk_cursor(c.log.time);
 mk_test = function() {
 
   util.load_exports(c, base);
   util.load_exports(c, dom);
   util.load_exports(c, patches);
 
-  c.call(c.r('mk_line'));
-  c.call(c.r('mk_line'));
+  c.rptr('ed').mod(c.call(c.r('mk_line')));
 
   //var elem = c.call(c.r('mk_elem'), c.mk('div'), c.mk('p-text'));
   //var node = c.call(elem.r('node'));
