@@ -9,7 +9,6 @@ T.fn   = 'fn';
 T.fn_call = 'fn-call';
 T.fn_app = 'fn-app';
 T.extern = 'ext';
-T.root = 'r';
 /*
 "Type Def":
 each has a type field
@@ -154,7 +153,8 @@ context.prototype = {
   match_obj: function(ref, head) {
     var obj = this.lookd(ref);
     if (obj && obj.head === head) {
-        return true;
+      console.log('match ', obj);
+      return true;
     }
     return false;
   },
@@ -172,18 +172,22 @@ context.prototype = {
     }
   },
   forward_frame: function() {
-    var c = this.cursor;
+    // TODO delete
     var limit = 0;
-    while (limit < 500 && c < this.log.time) {
+    var refs = [];
+    while (limit < 500 && this.cursor < this.log.time) {
       limit++;
-      if (this.match_obj(this.lookd(this.cursor)), 'frame') {
-        console.log('found frame: ', c);
-        return;
+      if (this.match_obj(this.cursor, 'FRAME')) {
+        refs.push(this.cursor);
+        this.forward();
+        return refs;
       } else {
+        refs.push(this.cursor);
         this.forward();
       }
     }
     console.log('forward_frame. end');
+    return refs;
   },
 
   backward: function() {
@@ -196,6 +200,22 @@ context.prototype = {
     }
   },
   backward_frame: function() {
+    // TODO delete
+    var limit = 0;
+    var refs = [];
+    while (limit < 500 && this.cursor > 0) {
+      limit++;
+      if (this.match_obj(this.cursor, 'FRAME')) {
+        refs.push(this.cursor);
+        this.backward();
+        return refs;
+      } else {
+        refs.push(this.cursor);
+        this.backward();
+      }
+    }
+    console.log('backward_frame. end');
+    return refs;
   },
 
   make_dependent: function(time) {

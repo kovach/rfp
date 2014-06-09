@@ -17,13 +17,15 @@ p = print_update;
 
 
 var global_mk_stepper = function(ref) {
-  var nc = new w.context(globals, c);
+  nc = new w.context(globals, c);
   nc.replay();
   nc.dependent = c;
   c.update_cursor();
   c.rewind(ref);
+
   // Make stepper with new context
   nc.rptr('stepper').mod(nc.call(nc.r('mk_stepper')));
+  nc.call(nc.r('log_frame'), nc.r('stepper'), nc.mk(c.cursor));
 }
 
 var globals = {

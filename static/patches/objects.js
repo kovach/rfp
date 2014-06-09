@@ -58,10 +58,24 @@ var stepper_handler= function(self, key) {
       dependent.backward();
       break;
     case 'J':
-      dependent.forward_frame();
+      var refs = dependent.forward_frame();
+      var node = call(self.r('node'));
+      while(node.firstChild) {
+        extern(dom_extern.removeElement(node.firstChild));
+      }
+      _.each(refs, function(ref) {
+        call(r('log_entry'), self, mk(ref));
+      });
       break;
     case 'K':
-      dependent.backward_frame();
+      var refs = dependent.backward_frame();
+      var node = call(self.r('node'));
+      while(node.firstChild) {
+        extern(dom_extern.removeElement(node.firstChild));
+      }
+      _.each(refs, function(ref) {
+        call(r('log_entry'), self, mk(ref));
+      });
       break;
   }
 }
@@ -72,11 +86,8 @@ var line_edit_handler = function(self, key) {
       call(r('toggle_mode'), self);
       break;
     case 'ESC':
-      global_mk_stepper(0);
+      //global_mk_stepper(0);
       break;
-//    case 'j':
-//      dependent.forward();
-//      break;
     default:
       if (self.r('mode').head === 'on') {
         switch (key.head) {
@@ -93,12 +104,43 @@ var line_edit_handler = function(self, key) {
 var mk_line = function() {
   var box = call(r('mk_key_box'), r('line_edit_handler'), mk('p-text'));
   newptr(box, 'mode').mod(mk('off'));
-  mk('reset');
+  mk('BARRIER');
   return box;
 }
 var mk_stepper = function() {
   var box = call(r('mk_key_box'), r('stepper_handler'), mk('stepper'));
   return box;
+}
+
+var log_entry = function(self, ind) {
+  var ref = ind.head;
+  var entry = lookr(ref).val;
+
+  call(r('mk_text'), self, ind);
+  call(r('mk_text'), self, mk(' '));
+  call(r('mk_text'), self, mk(entry.type));
+  call(r('mk_text'), self, mk(' '));
+
+  switch (entry.type) {
+    case T.data:
+      call(r('mk_text'), self, mk(entry.head));
+      break;
+    case T.fn:
+      break;
+    case T.data:
+      break;
+    case T.data:
+      break;
+  }
+
+  call(r('mk_text'), self, mk('\n'));
+}
+var log_frame = function(self, ind) {
+  var ref = ind.head;
+  while (!match_obj(ref, 'FRAME')) {
+    call(r('log_entry'), self, mk(ref));
+    ref++;
+  }
 }
 
 var copy_log = function(context) {
@@ -116,5 +158,7 @@ module.exports = {
 
     mk_line: mk_line,
     mk_stepper: mk_stepper,
+    log_entry: log_entry,
+    log_frame: log_frame,
   },
 }

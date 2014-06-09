@@ -79,6 +79,7 @@ ul {
   display: table-cell;
   outline: none;
   margin: 20;
+  overflow: auto;
 
   min-width: 300px;
   width: 300px;
