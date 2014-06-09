@@ -70,10 +70,10 @@ ul {
   -o-box-sizing: border-box;
 }
 
-.p-text {
+.p-text, .stepper {
   color: #fff;
   font-size: 12pt;
-  background-color: #457;
+  background-color: #073642;
   white-space: pre-wrap;
 
   display: table-cell;
@@ -83,6 +83,9 @@ ul {
   min-width: 300px;
   width: 300px;
   height: 100%;
+}
+.stepper {
+  background-color: #450;
 }
 .str {
   display: inline;

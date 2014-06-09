@@ -1,4 +1,5 @@
 var _ = require('underscore');
+var util = require('../util/util.js');
 
 T = {}
 T.ptr_root = 'ptr-root';
@@ -90,8 +91,12 @@ log.prototype = {
   },
 }
 
-var context = function(other_context) {
+var context = function(globals, other_context) {
   var w = this;
+
+  // External imports
+  this.globals = globals;
+  util.merge_obj(w, globals);
 
   // The Log
   w.log = new log();
@@ -107,6 +112,7 @@ var context = function(other_context) {
   w.cursor_log = new log();
 
   w.mkroot();
+  w.cursor = w.log.time;
 
   // Load other log
   if (other_context) {
@@ -142,19 +148,76 @@ context.prototype = {
   //  });
   //},
 
+  update_cursor: function() {
+    this.cursor = this.log.time;
+  },
+  match_obj: function(ref, head) {
+    var obj = this.lookd(ref);
+    if (obj && obj.head === head) {
+        return true;
+    }
+    return false;
+  },
+  step_cursor: function() {
+    //console.log('step: ', c);
+    this.do_op(this.cursor, this.lookr(this.cursor));
+    this.cursor++;
+  },
   forward: function() {
     var c = this.cursor;
     if (c < this.log.time) {
-      console.log('step: ', c);
-      this.do_op(c, this.lookr(c));
-      this.cursor++;
+      this.step_cursor();
     } else {
       console.log('forward. end');
     }
   },
+  forward_frame: function() {
+    var c = this.cursor;
+    var limit = 0;
+    while (limit < 500 && c < this.log.time) {
+      limit++;
+      if (this.match_obj(this.lookd(this.cursor)), 'frame') {
+        console.log('found frame: ', c);
+        return;
+      } else {
+        this.forward();
+      }
+    }
+    console.log('forward_frame. end');
+  },
 
-  make_dependent: function() {
-    this.dependent = new context(this);
+  backward: function() {
+    var c = this.cursor;
+    if (c > 0) {
+      this.undo_op(c-1, this.lookr(c-1));
+      this.cursor--;
+    } else {
+      console.log('backward. start');
+    }
+  },
+  backward_frame: function() {
+  },
+
+  make_dependent: function(time) {
+    var dep = new context(this.globals, this);
+    this.dependent = dep;
+    dep.replay();
+    dep.rewind(time);
+    dep.forward_frame();
+  },
+
+  replay: function() {
+    while (this.cursor < this.log.time) {
+      this.forward();
+    }
+  },
+  rewind: function(time) {
+    if (time === undefined) {
+      time = 0;
+    }
+    while (this.cursor > time) {
+      this.backward();
+    }
   },
 
   // Log: 1 member
@@ -272,7 +335,12 @@ context.prototype = {
   undo_modptr: function(ref, entry) {
     var ptr_obj = this.ptrs[ref];
     ptr_obj.pref = entry.prior;
-    ptr_obj.dref = this.lookd(this.lookr(entry.prior).val.val).ref;
+    var previous = this.lookr(entry.prior).val;
+    if (previous.val) {
+      ptr_obj.dref = this.lookd(previous.val).ref;
+    } else {
+      ptr_obj.dref = undefined;
+    }
     return ptr_obj;
   },
 
@@ -413,13 +481,13 @@ context.prototype = {
   },
 
   undo_extern: function(entry) {
-    return dom_extern.undo_effect(entry.ref);
+    return this.dom_extern.undo_effect(entry.ref);
   },
   do_extern: function(entry) {
-    return dom_extern.do_effect(entry.ref);
+    return this.dom_extern.do_effect(entry.ref);
   },
   extern: function(entry) {
-    this.add({
+    var ref = this.add({
       type: T.extern,
       ref: entry.ref,
     });

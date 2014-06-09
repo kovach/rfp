@@ -2,7 +2,7 @@ var _ = require('underscore');
 var util = require('../util/util.js');
 var o = require('../base/objects.js');
 
-var dom_extern = require ('../dom-util.js');
+//var dom_extern = require ('../dom-util.js');
 
 var mk_dom_constants = function() {
   rptr('li').mod(mk('li'));
@@ -58,9 +58,11 @@ var mk_text = function(parent, str, mouseHandlers) {
 var add_mouse = function(elem, handlers) {
   var node = call(elem.r('node'));
   var left = function(ev) {
+    mk('frame');
     call(handlers.r('left'), elem);
   }
   var right = function(ev) {
+    mk('frame');
     call(handlers.r('right'), elem);
   }
   dom_extern.addMouse(node,
@@ -72,10 +74,9 @@ var add_mouse = function(elem, handlers) {
 var add_key = function(elem, handler) {
   var node = call(elem.r('node'));
   var press = function(char) {
+    mk('frame');
     call(handler, elem, mk(char));
   }
-  console.log('ELEM: ', elem);
-  console.log('NODE: ', node);
   dom_extern.addKey(node, press);
 }
 
