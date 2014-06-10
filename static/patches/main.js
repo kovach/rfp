@@ -17,6 +17,14 @@ p = print_update;
 
 nc = undefined;
 var global_mk_stepper = function(ref) {
+  if (nc) {
+    nc.dependent.replay();
+    var node = nc.call(nc.r('stepper').r('node'));
+    if (node !== null) {
+      dom_extern.removeElement(node);
+    }
+    nc = undefined;
+  }
   if (nc === undefined) {
     nc = new w.context(globals, c);
     nc.replay();
@@ -25,9 +33,8 @@ var global_mk_stepper = function(ref) {
     c.rewind(ref);
 
     // Make stepper with new context
-    nc.call(nc.r('mk_stepper'));
+    nc.rptr('stepper').mod(nc.call(nc.r('mk_stepper')));
   }
-  //nc.rptr('stepper').mod(nc.call(nc.r('mk_stepper')));
   //nc.call(nc.r('log_frame'), nc.r('stepper'), nc.mk(c.cursor));
 }
 
@@ -39,21 +46,31 @@ var globals = {
 
 
 c = new w.context(globals);
-cr1 = c.mk_cursor(c.log.time);
-var mk_test = function() {
+//cr1 = c.mk_cursor(c.log.time);
 
+var init_context = function(c) {
   util.load_exports(c, base);
   util.load_exports(c, dom);
   util.load_exports(c, patches);
+}
+var mk_test = function() {
 
+  //util.load_exports(c, base);
+  //util.load_exports(c, dom);
+  //util.load_exports(c, patches);
+
+  // Make help box in separate context
+  var help_context = new w.context(globals);
+
+
+  init_context(c);
+  init_context(help_context);
+
+  //help_context.call(help_context.r('mk_help'));
+  c.call(c.r('mk_help'));
+
+  // Make editor in main context
   c.rptr('ed').mod(c.call(c.r('mk_line')));
-
-  //var elem = c.call(c.r('mk_elem'), c.mk('div'), c.mk('p-text'));
-  //var node = c.call(elem.r('node'));
-  //dom_extern.appendDoc(node);
-  //c.rptr('elem1').mod(elem);
-  //c.call(c.r('mk_box'), elem);
-  //c.call(c.r('mk_text'), elem, mk('hello world.'));
 
   print_update();
 }

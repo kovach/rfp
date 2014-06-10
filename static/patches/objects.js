@@ -69,32 +69,24 @@ var remove_children = function(self) {
 }
 var stepper_handler= function(self, key) {
   switch (key.head) {
+    //case 'j':
+    //  dependent.forward();
+    //  break;
+    //case 'k':
+    //  dependent.backward();
+    //  break;
     case 'j':
-      dependent.forward();
-      break;
-    case 'k':
-      dependent.backward();
-      break;
-    case 'J':
       var refs = dependent.forward_frame();
       call(r('remove_children'), self);
-      //var node = call(self.r('node'));
-      //while(node.firstChild) {
-      //  extern(dom_extern.removeElement(node.firstChild));
-      //}
       _.each(refs, function(ref) {
         call(r('log_entry'), self, mk(ref));
       });
       break;
-    case 'K':
+    case 'k':
       var refs = dependent.backward_frame();
       refs.reverse();
       call(r('remove_children'), self);
       console.log('self ', self);
-      //var node = call(self.r('node'));
-      //while(node.firstChild) {
-      //  extern(dom_extern.removeElement(node.firstChild));
-      //}
       _.each(refs, function(ref) {
         call(r('log_entry'), self, mk(ref));
       });
@@ -104,6 +96,11 @@ var stepper_handler= function(self, key) {
       break;
     case 'l':
       call(self.r('node')).style.maxWidth = '';
+      break;
+    case 'ESC':
+      dependent.replay();
+      dependent
+      dom_extern.removeElement(call(self.r('node')));
       break;
   }
 }
@@ -134,11 +131,33 @@ var line_edit_handler = function(self, key) {
 var view_handler = function(self, key) {
   switch (key.head) {
     case 'ESC':
-      dom_extern.removeElement(call(self.r('node')));
+      extern(dom_extern.removeElement(call(self.r('node'))));
       break;
   }
 }
 var null_handler = function(self, key) {
+}
+var mk_help = function() {
+  var box = call(r('mk_key_box'), r('view_handler'), mk('help'));
+  var help_string = [
+    'type in the next box.',
+    '\n',
+    'right-click a letter',
+    'to time travel.',
+    '\n',
+    'j/k in the green box',
+    'move forward and back.',
+    '\n',
+    'left-click an element to inspect it.',
+    '\n',
+    'press ESC to delete a character or a box.',
+    '\n',
+    'new boxes steal mouse focus.',
+    '\n',
+    'going too far back in time might break things.',
+      ].join('\n');
+
+  call(r('mk_text'), box, mk(help_string));
 }
 var mk_line = function() {
   var box = call(r('mk_key_box'), r('line_edit_handler'), mk('p-text'));
@@ -292,6 +311,7 @@ module.exports = {
     mk_key_box: mk_key_box,
     toggle_mode: toggle_mode,
 
+    mk_help: mk_help,
     mk_line: mk_line,
     mk_stepper: mk_stepper,
     mk_viewer: mk_viewer,
