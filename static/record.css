@@ -85,16 +85,20 @@ ul {
   height: 100%;
 }
 .p-text {
+  min-width: 250px;
   background-color: #073642;
 }
 .stepper {
   background-color: #450;
+  overflow-x: auto;
 }
 .viewer {
   background-color: #174652;
+  overflow-x: auto;
 }
 .str {
   display: inline;
+  white-space: pre;
   outline: none;
 }
 

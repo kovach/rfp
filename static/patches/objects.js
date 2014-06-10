@@ -90,6 +90,7 @@ var stepper_handler= function(self, key) {
       var refs = dependent.backward_frame();
       refs.reverse();
       call(r('remove_children'), self);
+      console.log('self ', self);
       //var node = call(self.r('node'));
       //while(node.firstChild) {
       //  extern(dom_extern.removeElement(node.firstChild));
@@ -98,19 +99,24 @@ var stepper_handler= function(self, key) {
         call(r('log_entry'), self, mk(ref));
       });
       break;
-    case 'ESC':
-      //call(r('mk_viewer'));
+    case 'h':
+      call(self.r('node')).style.maxWidth = '10px';
+      break;
+    case 'l':
+      call(self.r('node')).style.maxWidth = '';
       break;
   }
 }
 var line_edit_handler = function(self, key) {
-  //console.log('key press! ', key);
+  update_cursor();
   switch (key.head) {
     case 'CTRL':
       call(r('toggle_mode'), self);
       break;
     case 'ESC':
-      //global_mk_stepper(0);
+      // do backspace
+      var node = call(self.r('node'));
+      extern(dom_extern.removeElement(node.lastChild));
       break;
     default:
       if (self.r('mode').head === 'on') {
@@ -137,7 +143,6 @@ var null_handler = function(self, key) {
 var mk_line = function() {
   var box = call(r('mk_key_box'), r('line_edit_handler'), mk('p-text'));
   newptr(box, 'mode').mod(mk('off'));
-  mk('BARRIER');
   return box;
 }
 var mk_stepper = function() {
@@ -180,11 +185,11 @@ var log_entry = function(self, ind) {
   var raw = function(str) {
     return {val: str};
   }
-  var wref = function(str) {
-    return {ref: ref, val: str};
-  }
   var space = raw(' ');
   var pp_type = function(ref, type) {
+    var wref = function(str) {
+      return {ref: ref, val: str};
+    }
     switch (type) {
       case T.ptr_edit:
         return [wref('mod'), space];
@@ -224,7 +229,6 @@ var log_entry = function(self, ind) {
             raw(" in ")]).concat(pp_entry(entry.base));
         break;
       case T.ptr_edit:
-        console.log('EDIT ', entry);
         var name = get_ptr_name(ref);
         var val = entry.val;
         result = result.concat([{ref: ref, val: name}, {val: ' -> '}]).

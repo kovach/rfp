@@ -15,16 +15,18 @@ var print_update = function() {
 }
 p = print_update;
 
-
+nc = undefined;
 var global_mk_stepper = function(ref) {
-  nc = new w.context(globals, c);
-  nc.replay();
-  nc.dependent = c;
-  c.update_cursor();
-  c.rewind(ref);
+  if (nc === undefined) {
+    nc = new w.context(globals, c);
+    nc.replay();
+    nc.dependent = c;
+    c.update_cursor();
+    c.rewind(ref);
 
-  // Make stepper with new context
-  nc.call(nc.r('mk_stepper'));
+    // Make stepper with new context
+    nc.call(nc.r('mk_stepper'));
+  }
   //nc.rptr('stepper').mod(nc.call(nc.r('mk_stepper')));
   //nc.call(nc.r('log_frame'), nc.r('stepper'), nc.mk(c.cursor));
 }

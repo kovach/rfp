@@ -15,6 +15,12 @@ var addMouse = function(obj, handlers) {
     handlers.right();
     ev.preventDefault();
   });
+  addH(obj, 'mouseover', function() {
+    obj.style.color = '#c22';
+  });
+  addH(obj, 'mouseout', function() {
+    obj.style.color = '';
+  });
 }
 var addKey = function(obj, handler) {
   addH(obj, 'keypress', function(ev) {

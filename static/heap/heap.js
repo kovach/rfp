@@ -153,7 +153,6 @@ context.prototype = {
   match_obj: function(ref, head) {
     var obj = this.lookd(ref);
     if (obj && obj.head === head) {
-      console.log('match ', obj);
       return true;
     }
     return false;
