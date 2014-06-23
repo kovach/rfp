@@ -142,12 +142,9 @@ var mk_help = function() {
   var help_string = [
     'type in the next box.',
     '\n',
-    'right-click a letter',
-    'to time travel.',
+    'right-click a letter to time travel.',
     '\n',
-    'j/k in the green box',
-    'move forward and back.',
-    '\n',
+    'j/k in the green box move forward and back.',
     'left-click an element to inspect it.',
     '\n',
     'press ESC to delete a character or a box.',
@@ -155,6 +152,8 @@ var mk_help = function() {
     'new boxes steal mouse focus.',
     '\n',
     'going too far back in time might break things.',
+    '\n',
+    'https://github.com/kovach/rfp'
       ].join('\n');
 
   call(r('mk_text'), box, mk(help_string));
